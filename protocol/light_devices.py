@@ -91,7 +91,7 @@ class BaseSim(SDK):
 
 
 class Door(BaseSim):
-    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0):
+    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip = None):
         super(Door, self).__init__(logger, encrypt_flag=encrypt_flag)
         module_name = "protocol.config.%s" % config_file
         mod = import_module(module_name)
@@ -103,12 +103,14 @@ class Door(BaseSim):
         self.attribute_initialization()
         self.device_id = self._deviceID
         self.msgst = defaultdict(lambda: {})
+        if self_ip:
+            self._ip = self_ip
 
         # state data:
         self.task_obj = Task('Washer-task', self.LOG)
         self.dev_register = False
         self.command_list = getattr(self.sim_config, "Command_list")
-        # self.create_tasks()
+        #self.create_tasks()
 
         self.msgs = []
         for msg_name in self.test_msgs["msgs"]:
@@ -125,11 +127,23 @@ class Door(BaseSim):
         self.msgs *= self.test_msgs["round"]
         random.shuffle(self.msgs)
 
+
+
     async def run_forever(self):
+        sleep_s = self.test_msgs["interval"]
+        if self.tt:
+            sleep_s = self.tt
+        sleep_s /= 1000.0
+        now = lambda : time.time()
+        start = now()
+        self.LOG.warn("Sleep_second is {}".format(sleep_s))
         while True:
             await self.msg_dispatch()
             await self.schedule()
             await self.send_data_once()
+            if(now()-start>=30):
+                await self.to_send_heartbeat()
+                start = now()
             if self.tt:
                 await asyncio.sleep(self.tt / 1000.0)
             else:
@@ -143,14 +157,14 @@ class Door(BaseSim):
                                self.status_report_monitor, 10000000, 1)
 
         self.task_obj.add_task(
-            'heartbeat', self.to_send_heartbeat, 1000000, 6000)
+            'heartbeat', self.to_send_heartbeat, 1000000, 1000)
 
     async def msg_dispatch(self):
         try:
-            msg = self.msgs.pop()
             if self.dev_register == False:
                 pass
             else:
+                msg = self.msgs.pop()
                 self.to_to_send_msg(msg, ack=b'\x00')
         except:
             pass
@@ -198,13 +212,12 @@ class Door(BaseSim):
             self.LOG.info(common_APIs.chinese_show("设备已经注册"))
         else:
             self.LOG.info(common_APIs.chinese_show("发送设备注册"))
-            self.to_to_send_msg(json.dumps(
-                self.get_send_msg('COM_DEV_REGISTER')), ack=b'\x00')
+            self.to_to_send_msg(json.dumps(self.get_send_msg('COM_DEV_REGISTER')), ack=b'\x00')
 
     async def to_send_heartbeat(self):
-        await asyncio.sleep(60)
-        self.to_to_send_msg(json.dumps(
-            self.get_send_msg('COM_HEARTBEAT')), ack=b'\x00')
+        self.LOG.info('to_send_heartbeat')
+        if self.dev_register:
+            self.to_to_send_msg(json.dumps(self.get_send_msg('COM_HEARTBEAT')), ack=b'\x00')
 
     def get_upload_status(self):
         # self.LOG.info(common_APIs.chinese_show("设备状态上报"))

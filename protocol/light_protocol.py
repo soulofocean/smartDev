@@ -48,6 +48,7 @@ class SDK(asyncio.Protocol):
 
     def data_received(self, data):
         self.queue_in.put_nowait(data)
+        self.LOG.debug(repr(data))
 
     def connection_lost(self, exc):
         self.LOG.critical('The server closed the connection!')
@@ -193,6 +194,7 @@ class SDK(asyncio.Protocol):
         else:
             data = await self.queue_out.get()
             self.transport.write(data)
+            self.LOG.debug(repr(data))
 
     def to_send_data(self, data):
         self.queue_out.put_nowait(data)

@@ -97,6 +97,13 @@ class ArgHandle():
             type=int,
             help='Specify how many devices to start, default is only 1',
         )
+        parser.add_argument(
+            '--self_IP',
+            dest='self_IP',
+            action='store',
+            default=None,#'172.24.9.134',
+            help='Specify TCP client IP address',
+        )
         return parser
 
     def get_args(self, attrname):
@@ -104,6 +111,19 @@ class ArgHandle():
 
     def check_args(self):
         global ipv4_list
+        ipv4_list = []
+
+        if arg_handle.get_args('self_IP'):
+            ipv4s = common_APIs.get_local_ipv4()
+            ip_prefix = '.'.join(arg_handle.get_args(
+                'self_IP').split('.')[0:-1])
+            ip_start = int(arg_handle.get_args('self_IP').split('.')[-1])
+            ipv4_list = [ip for ip in ipv4s if re.search(
+                r'%s' % (ip_prefix), ip) and int(ip.split('.')[-1]) >= ip_start]
+
+            ipv4_list.sort()
+            for ipv4 in ipv4_list:
+                cprint.notice_p("find ip: " + ipv4)
 
     def run(self):
         self.args = self.parser.parse_args()
@@ -206,8 +226,17 @@ def sys_cleanup():
     LOG.info("Goodbye!!!")
     sys.exit()
 
+def delallLog(doit = True):
+    if doit:
+        files = os.listdir(os.getcwd())
+        print(files)
+        for file in files:
+            if( file.find(".log") != -1):
+                os.remove(file)
+                print("file:%s is removed" % (file,))
 
 if __name__ == '__main__':
+    delallLog()
     sys_init()
     loop = asyncio.get_event_loop()
     if arg_handle.get_args('device_count') > 1:
@@ -218,10 +247,22 @@ if __name__ == '__main__':
     sims = []
     for i in range(arg_handle.get_args('device_count')):
         dev_LOG = MyLogger('dev_sim_%d.log' % (
-            arg_handle.get_args('xx') + i), clevel=log_level, flevel=log_level, fenable=False)
+            arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=True)
+        self_addr = None
+        self_ip = None
+        if ipv4_list:
+            id = i % len(ipv4_list)
+            #self_addr = (ipv4_list[id], random.randint(
+                #arg_handle.get_args('server_port'), 65535))
+            self_addr = (ipv4_list[id], 0)
+            dev_LOG.warn('self addr is: %s' % (str(self_addr)))
 
+        if self_addr:
+            self_ip = self_addr[0]
         coro = loop.create_connection(lambda: Door(
-            config_file=arg_handle.get_args('config_file'), logger=dev_LOG, N=arg_handle.get_args('xx') + i, tt=arg_handle.get_args('tt'), encrypt_flag=arg_handle.get_args('encrypt')), arg_handle.get_args('server_IP'), arg_handle.get_args('server_port'))
+            config_file=arg_handle.get_args('config_file'), logger=dev_LOG, N=arg_handle.get_args('xx') + i,
+            tt=arg_handle.get_args('tt'), encrypt_flag=arg_handle.get_args('encrypt'), self_ip=self_ip),
+                                      arg_handle.get_args('server_IP'), arg_handle.get_args('server_port'))
         transport, protocol = loop.run_until_complete(coro)
         asyncio.ensure_future(protocol.run_forever())
         sims.append(protocol)

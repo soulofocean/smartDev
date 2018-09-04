@@ -40,6 +40,7 @@ class BaseSim(SDK):
             self.msgst[command] = {
                 'req': 0,
                 'rsp': 0,
+                'rsp_fail': 0,
             }
 
         self.msgst[command][direct] += 1
@@ -91,7 +92,7 @@ class BaseSim(SDK):
 
 
 class Door(BaseSim):
-    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip = None):
+    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip = None, lp=None, to=None):
         super(Door, self).__init__(logger, encrypt_flag=encrypt_flag)
         module_name = "protocol.config.%s" % config_file
         mod = import_module(module_name)
@@ -126,28 +127,78 @@ class Door(BaseSim):
                 self.msgs.append(msg)
         self.msgs *= self.test_msgs["round"]
         random.shuffle(self.msgs)
+        self.lp=lp
+        self.tMsg="Start"
+        self.summaryDict = self.getSummaryDict()
+        self.sleep_s = self.tt
+        self.beginTime = time.time()
+        self.breakTime = to
+        self.LOG.info("device start!")
 
+    def getSummaryDict(self):
+        tmpDict = {}
+        round = self.test_msgs["round"]
+        for key in self.test_msgs["msgs"].keys():
+            msgHead = key.split(".")[0]
+            tmpDict[msgHead] = self.test_msgs["msgs"][key] * round
+        return tmpDict
 
+    def getStopConition(self):
+        #self.LOG.warn(str(len(self.msgs)))
+        if self.breakTime == None:
+            return False
+        if not self.breakTime == 0 and time.time()-self.beginTime>=self.breakTime:
+            self.LOG.warn("stop for time out, timespan is {:.2f}".format(time.time()-self.beginTime))
+            return True
+        if(self.msgs):
+            return False
+        else:
+            try:
+                #self.LOG.warn(str(self.summaryDict))
+                for k in self.summaryDict:
+                    if k not in self.msgst or not self.msgst[k]["rsp"] ==  self.summaryDict[k]:
+                        return False
+                #print(self.msgst)
+                if("COM_HEARTBEAT" in self.msgst):
+                    if(self.msgst["COM_HEARTBEAT"]["req"] == self.msgst["COM_HEARTBEAT"]["rsp"]):
+                        return True
+                    else:
+                        return False
+                else:
+                    return True
+            except ValueError as Argument:
+                self.LOG.error("getStopConition Error:{}".format(Argument))
+                return True
+        return False
 
     async def run_forever(self):
-        sleep_s = self.test_msgs["interval"]
+        self.sleep_s = self.test_msgs["interval"]
         if self.tt:
-            sleep_s = self.tt
-        sleep_s /= 1000.0
+            self.sleep_s = self.tt
+        self.sleep_s /= 1000.0
         now = lambda : time.time()
         start = now()
-        self.LOG.warn("Sleep_second is {}".format(sleep_s))
-        while True:
+        self.LOG.warn("Sleep_second is {}".format(self.sleep_s))
+
+        while self.getStopConition()==False:
             await self.msg_dispatch()
             await self.schedule()
             await self.send_data_once()
             if(now()-start>=30):
                 await self.to_send_heartbeat()
                 start = now()
-            if self.tt:
-                await asyncio.sleep(self.tt / 1000.0)
-            else:
-                await asyncio.sleep(self.test_msgs["interval"] / 1000.0)
+            await asyncio.sleep(self.sleep_s)
+            #if self.tt:
+            #    await asyncio.sleep(self.tt / 1000.0)
+            #else:
+            #    await asyncio.sleep(self.test_msgs["interval"] / 1000.0)
+        #self.lp.stop()
+        self.tMsg = "Stop"
+        #self.LOG.warn(str(self.msgst))
+        #self.LOG.warn(str(asyncio.Task.all_tasks()))
+        self.LOG.info("device stop!")
+        if len(asyncio.Task.all_tasks()) == 1:
+            self.lp.stop()
 
     def create_tasks(self):
         self.task_obj.add_task(
@@ -161,12 +212,16 @@ class Door(BaseSim):
 
     async def msg_dispatch(self):
         try:
+            #self.LOG.warn("msg_disp")
             if self.dev_register == False:
                 pass
             else:
-                msg = self.msgs.pop()
-                self.to_to_send_msg(msg, ack=b'\x00')
-        except:
+                if self.msgs:
+                    #self.LOG.warn(str(len(self.msgs)))
+                    msg = self.msgs.pop()
+                    self.to_to_send_msg(msg, ack=b'\x00')
+        except ValueError as Argument:
+            self.LOG.error("msg_dispatch Exception:{}".format(Argument))
             pass
 
     def status_maintain(self):
@@ -238,8 +293,11 @@ class Door(BaseSim):
         return json.dumps(report_msg)
 
     def dev_protocol_handler(self, msg, ack=False):
+        #self.LOG.warn(str(msg))
         if ack:
             self.update_msgst(msg['Command'], 'rsp')
+            if not msg['Result'] == 0:
+                self.update_msgst(msg['Command'], 'rsp_fail')
             if msg['Command'] == 'COM_DEV_REGISTER':
                 if msg['Result'] == 0:
                     self.dev_register = True
@@ -257,12 +315,15 @@ class Door(BaseSim):
         else:
             self.update_msgst(msg['Command'], 'req')
 
+
         if msg['Command'] == 'COM_HEARTBEAT':
             pass
         elif msg['Command'] in self.command_list:
             self.set_items(msg['Command'], msg)
             rsp_msg = self.get_rsp_msg(msg['Command'])
             self.update_msgst(msg['Command'], 'rsp')
+            if "Result" in msg and not msg['Result'] == 0:
+                self.update_msgst(msg['Command'], 'rsp_fail')
             return json.dumps(rsp_msg)
         else:
             self.LOG.warn('Unknow msg: %s!' % (msg['Command']))

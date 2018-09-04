@@ -104,6 +104,21 @@ class ArgHandle():
             default=None,#'172.24.9.134',
             help='Specify TCP client IP address',
         )
+        parser.add_argument(
+            '--devlce_timeout',
+            dest='dto',
+            action='store',
+            default=None,  # '172.24.9.134',
+            help='Specify device timeout, the unit is second',
+        )
+        parser.add_argument(
+            '--to',
+            dest='dto',
+            action='store',
+            default=None,  # '172.24.9.134',
+            help='Specify devices timeout seconds,None:never timeout(default),0:willnot exit until rep==rsp'
+                 '[n]: will exit after [n] seconds',
+        )
         return parser
 
     def get_args(self, attrname):
@@ -235,6 +250,61 @@ def delallLog(doit = True):
                 os.remove(file)
                 print("file:%s is removed" % (file,))
 
+def getP(up,down):
+    if down == 0:
+        return "0.00%"
+    return "{0:.2f}%".format(round(up*100/down,3))
+
+def genReport(sims=[]):
+    try:
+        end = time.time()
+        strTmp = "\r\n" + "="*32 + "\r\n"
+        strTmp += "TotalClientNum:{}\r\n".format(arg_handle.get_args('device_count'))
+        strTmp += "SendTimeDelay:{}s\r\n".format(sims[0].sleep_s)
+        ts = round(end-start,3)
+        strTmp += "ConsumTime:{}s\r\n".format(ts)
+        totalSend = 0
+        totalRcv = 0
+        totalFail = 0
+        detailDict = {}
+        if sims:
+            for s in sims:
+                for cmd in s.msgst.keys():
+                    #if cmd == "COM_HEARTBEAT":
+                    #    continue
+                    if cmd not in detailDict:
+                        detailDict[cmd]={'req': 0, 'rsp': 0, 'rsp_fail': 0}
+                    if("req" not in s.msgst[cmd]):
+                        LOG.error(str(s.msgst[cmd]))
+                    if("req" in s.msgst[cmd]):
+                        detailDict[cmd]["req"] += s.msgst[cmd]["req"]
+                        totalSend += s.msgst[cmd]["req"]
+                    if ("rsp" in s.msgst[cmd]):
+                        detailDict[cmd]["rsp"] += s.msgst[cmd]["rsp"]
+                        totalRcv += s.msgst[cmd]["rsp"]
+                    if ("rsp_fail" in s.msgst[cmd]):
+                        detailDict[cmd]["rsp_fail"] += s.msgst[cmd]["rsp_fail"]
+                        totalFail += s.msgst[cmd]["rsp_fail"]
+                #strTmp += "{}\r\n".format(str(s.msgst))
+        strTmp += "TotalSend:{}\t\tQPS:{}\r\n".format(totalSend,round(totalSend/ts,3))
+        strTmp += "TotalRcv:{}\t\tQPS:{}\r\n".format(totalRcv,round(totalRcv/ts,3))
+        strTmp += "TotalFail:{}\r\n".format(totalFail)
+        strTmp += "Rcv/Send:{}\r\n".format(getP(totalRcv,totalSend))
+        strTmp += "Fail/Rcv:{}\r\n".format(getP(totalFail, totalRcv))
+        strTmp += "Fail/Send:{}\r\n".format(getP(totalFail, totalSend))
+        strTmp += "{0}Detail{0}\r\n".format("-"*10)
+        for cmd in detailDict.keys():
+            strTmp += "{}\r\n".format(cmd)
+            for detail in detailDict[cmd].keys():
+                strTmp += "\t{}:{}\r\n".format(detail,detailDict[cmd][detail])
+            strTmp += "\trsp/req:{}\r\n".format(getP(detailDict[cmd]["rsp"], detailDict[cmd]["req"]))
+            strTmp += "\trsp_fail/rsp:{}\r\n".format(getP(detailDict[cmd]["rsp_fail"], detailDict[cmd]["rsp"]))
+            strTmp += "\trsp_fail/req:{}\r\n".format(getP(detailDict[cmd]["rsp_fail"], detailDict[cmd]["req"]))
+        strTmp += "=" * 32 + "\r\n"
+        return strTmp
+    except (ValueError) as Argument:
+        LOG.error(Argument)
+
 if __name__ == '__main__':
     delallLog()
     sys_init()
@@ -245,6 +315,7 @@ if __name__ == '__main__':
         log_level = logging.INFO
 
     sims = []
+    start = time.time()
     for i in range(arg_handle.get_args('device_count')):
         dev_LOG = MyLogger('dev_sim_%d.log' % (
             arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=True)
@@ -259,17 +330,29 @@ if __name__ == '__main__':
 
         if self_addr:
             self_ip = self_addr[0]
-        coro = loop.create_connection(lambda: Door(
-            config_file=arg_handle.get_args('config_file'), logger=dev_LOG, N=arg_handle.get_args('xx') + i,
-            tt=arg_handle.get_args('tt'), encrypt_flag=arg_handle.get_args('encrypt'), self_ip=self_ip),
-                                      arg_handle.get_args('server_IP'), arg_handle.get_args('server_port'))
+        device_timeout = arg_handle.get_args('dto')
+        if not device_timeout == None:
+            device_timeout = int(device_timeout)
+        configfile = arg_handle.get_args('config_file')
+        sendInterval = arg_handle.get_args('tt')
+        encryptflag = arg_handle.get_args('encrypt')
+        serverIP = arg_handle.get_args('server_IP')
+        serverPort = arg_handle.get_args('server_port')
+        coro = loop.create_connection(lambda: Door(config_file=configfile, logger=dev_LOG,
+                                                   N=arg_handle.get_args('xx') + i,tt=sendInterval,
+                                                   encrypt_flag=encryptflag, self_ip=self_ip,
+                                                   lp=loop,to=device_timeout),
+                                      serverIP, serverPort)
         transport, protocol = loop.run_until_complete(coro)
         asyncio.ensure_future(protocol.run_forever())
         sims.append(protocol)
 
     loop.run_forever()
     loop.close()
+    LOG.warn("All devices is stop!")
+    #COM_HEARTBEAT
+    LOG.warn(genReport(sims))
 
-    my_cmd = MyCmd(logger=LOG, sim_objs=sims)
-    my_cmd.cmdloop()
+    #my_cmd = MyCmd(logger=LOG, sim_objs=sims)
+    #my_cmd.cmdloop()
     sys_cleanup()

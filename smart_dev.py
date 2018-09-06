@@ -142,7 +142,7 @@ class ArgHandle():
 
     def run(self):
         self.args = self.parser.parse_args()
-        cprint.notice_p("CMD line: " + str(self.args))
+        LOG.warn("CMD line: " + str(self.args))
         self.check_args()
 
 
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     start = time.time()
     for i in range(arg_handle.get_args('device_count')):
         dev_LOG = MyLogger('dev_sim_%d.log' % (
-            arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=True)
+            arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=False)
         self_addr = None
         self_ip = None
         if ipv4_list:

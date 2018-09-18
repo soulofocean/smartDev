@@ -318,7 +318,7 @@ if __name__ == '__main__':
     start = time.time()
     for i in range(arg_handle.get_args('device_count')):
         dev_LOG = MyLogger('dev_sim_%d.log' % (
-            arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=False)
+            arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=True)
         self_addr = None
         self_ip = None
         if ipv4_list:

@@ -7,7 +7,7 @@ import re
 # 设备初始化参数
 Attribute_initialization = {
     "mac_list": ['59:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 4000)],
-    "DeviceFacturer": 1005,
+    "DeviceFacturer": 1001,
     "DeviceType": 2009,
     "subDeviceType": 3010,
     "_type": 0,

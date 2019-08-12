@@ -70,7 +70,7 @@ class MyLogger:
             '[%(asctime)s] [%(levelname)s] %(message)s')
 
         # 设置CMD日志
-        if cenable == True and re.search(r'linux', sys.platform):
+        if cenable == False or re.search(r'linux', sys.platform):
             pass
         else:
             self.sh = logging.StreamHandler()

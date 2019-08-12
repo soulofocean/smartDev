@@ -165,26 +165,27 @@ class SDK(asyncio.Protocol):
             return "No_need_send"
 
     async def schedule(self):
-        if self.queue_in.empty():
-            pass
-        else:
-            ori_data = self.left_data + self.queue_in.get_nowait()
-            while len(ori_data) < self.min_length:
-                ori_data += self.queue_in.get_nowait()
-            data_list, self.left_data = self.protocol_data_washer(ori_data)
-            if data_list:
-                for request_msg in data_list:
-                    response_msg = self.protocol_handler(request_msg)
-                    if response_msg == 'No_need_send':
-                        pass
-                    elif response_msg:
-                        self.queue_out.put_nowait(response_msg)
-                    else:
-                        self.LOG.error(protocol_data_printB(
-                            request_msg, title='%s: got invalid data:' % (self.name)))
-            else:
-                self.LOG.warn('whwer is go?')
+        while self.getStopConition()==False:
+            if self.queue_in.empty():
                 pass
+            else:
+                ori_data = self.left_data + self.queue_in.get_nowait()
+                while len(ori_data) < self.min_length:
+                    ori_data += self.queue_in.get_nowait()
+                data_list, self.left_data = self.protocol_data_washer(ori_data)
+                if data_list:
+                    for request_msg in data_list:
+                        response_msg = self.protocol_handler(request_msg)
+                        if response_msg == 'No_need_send':
+                            pass
+                        elif response_msg:
+                            self.queue_out.put_nowait(response_msg)
+                        else:
+                            self.LOG.error(protocol_data_printB(
+                                request_msg, title='%s: got invalid data:' % (self.name)))
+                else:
+                    self.LOG.warn('whwer is go?')
+            await asyncio.sleep(self.procInv)
 
     async def send_data_once(self, data=b''):
         if data:
@@ -196,7 +197,18 @@ class SDK(asyncio.Protocol):
             data = await self.queue_out.get()
             self.transport.write(data)
             self.LOG.debug(protocol_data_printB(data, title="client send data:"))
-            self.LOG.debug(repr(data))
+            self.LOG.info(repr(data))
+
+    async def send_data_loop(self):
+        while self.getStopConition()==False:
+            if self.queue_out.empty():
+                pass
+            else:
+                data = await self.queue_out.get()
+                self.transport.write(data)
+                self.LOG.debug(protocol_data_printB(data, title="client send data:"))
+                self.LOG.info(repr(data))
+            await asyncio.sleep(self.procInv)
 
     def to_send_data(self, data):
         self.queue_out.put_nowait(data)

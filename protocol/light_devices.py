@@ -33,7 +33,25 @@ from protocol.light_protocol import SDK
 class BaseSim(SDK):
     __metaclass__ = ABCMeta
 
+    def init_msgst_time(self,time_val=None):
+        if time_val == None:
+            time_val = time.time()
+        self.msgst['TIMES']['reg'] = time_val
+        self.msgst['TIMES']['disp'] = time_val
+        self.msgst['TIMES']['spent'] = 0
+
+    def set_msgst_disp_time(self,time_val=None):
+        if time_val == None:
+            time_val = time.time()
+        self.msgst['TIMES']['disp'] = time_val
+        self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
+
+    def get_msgst_spent_time(self):
+        return self.msgst['TIMES']['spent']
+
+
     def update_msgst(self, command, direct):
+        time_val = time.time()
         if command in self.msgst:
             pass
         else:
@@ -42,8 +60,8 @@ class BaseSim(SDK):
                 'rsp': 0,
                 'rsp_fail': 0,
             }
-
         self.msgst[command][direct] += 1
+        self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
 
     def set_item(self, item, value):
         if item in self.__dict__:
@@ -92,7 +110,8 @@ class BaseSim(SDK):
 
 
 class Door(BaseSim):
-    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip = None, lp=None, to=None):
+    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip = None, lp=None,
+                 to=None,disp_sleep_s =10):
         super(Door, self).__init__(logger, encrypt_flag=encrypt_flag)
         module_name = "protocol.config.%s" % config_file
         mod = import_module(module_name)
@@ -106,6 +125,10 @@ class Door(BaseSim):
         self.msgst = defaultdict(lambda: {})
         if self_ip:
             self._ip = self_ip
+        # 心跳间隔默认30秒
+        self.hbInv = 30
+        # 处理间隔默认0.1秒
+        self.procInv = 0.1
 
         # state data:
         self.task_obj = Task('Washer-task', self.LOG)
@@ -130,7 +153,8 @@ class Door(BaseSim):
         self.lp=lp
         self.tMsg="Start"
         self.summaryDict = self.getSummaryDict()
-        self.sleep_s = self.tt
+        # self.sleep_s = self.tt
+        self.disp_sleep_s = disp_sleep_s
         self.beginTime = time.time()
         self.breakTime = to
         self.LOG.info("device start!")
@@ -145,31 +169,41 @@ class Door(BaseSim):
 
     def getStopConition(self):
         #self.LOG.warn(str(len(self.msgs)))
-        if self.breakTime == None:
+        if self.breakTime == None or self.breakTime < 0:
+            # self.LOG.debug("1")
             return False
         if not self.breakTime == 0 and time.time()-self.beginTime>=self.breakTime:
             self.LOG.warn("stop for time out, timespan is {:.2f}".format(time.time()-self.beginTime))
+            # self.LOG.debug("2")
             return True
         if(self.msgs):
+            # self.LOG.debug("3")
             return False
         else:
             try:
-                #self.LOG.warn(str(self.summaryDict))
+                self.LOG.info(str(self.summaryDict))
+                self.LOG.info(str(self.msgst))
                 for k in self.summaryDict:
                     if k not in self.msgst or not self.msgst[k]["rsp"] ==  self.summaryDict[k]:
+                        # self.LOG.debug("4")
                         return False
                 #print(self.msgst)
                 if("COM_HEARTBEAT" in self.msgst):
                     if(self.msgst["COM_HEARTBEAT"]["req"] == self.msgst["COM_HEARTBEAT"]["rsp"]):
+                        # self.LOG.debug("5")
                         return True
                     else:
+                        # self.LOG.debug("6")
                         return False
                 else:
+                    # self.LOG.debug("7")
+                    # if len(asyncio.Task.all_tasks())==2 :
+                    #     self.lp.close()
                     return True
             except ValueError as Argument:
                 self.LOG.error("getStopConition Error:{}".format(Argument))
+                # self.LOG.debug("8")
                 return True
-        return False
 
     async def run_forever(self):
         self.sleep_s = self.test_msgs["interval"]
@@ -178,27 +212,36 @@ class Door(BaseSim):
         self.sleep_s /= 1000.0
         now = lambda : time.time()
         start = now()
+        self.msgst["TIMES"]["REG"] = now()
         self.LOG.warn("Sleep_second is {}".format(self.sleep_s))
-
-        while self.getStopConition()==False:
-            await self.msg_dispatch()
-            await self.schedule()
-            await self.send_data_once()
-            if(now()-start>=30):
-                await self.to_send_heartbeat()
-                start = now()
-            await asyncio.sleep(self.sleep_s)
-            #if self.tt:
-            #    await asyncio.sleep(self.tt / 1000.0)
-            #else:
-            #    await asyncio.sleep(self.test_msgs["interval"] / 1000.0)
-        #self.lp.stop()
-        self.tMsg = "Stop"
-        #self.LOG.warn(str(self.msgst))
-        #self.LOG.warn(str(asyncio.Task.all_tasks()))
-        self.LOG.info("device stop!")
-        if len(asyncio.Task.all_tasks()) == 1:
-            self.lp.stop()
+        asyncio.create_task(self.to_send_heartbeat())
+        asyncio.create_task(self.schedule())
+        asyncio.create_task(self.send_data_loop())
+        await asyncio.sleep(self.disp_sleep_s)
+        self.set_msgst_disp_time()
+        asyncio.create_task(self.msg_dispatch())
+        # while self.getStopConition()==False:
+        #     await asyncio.sleep(10)
+        # while self.getStopConition()==False:
+        #     # await self.msg_dispatch()
+        #     # await self.schedule()
+        #     # await self.send_data_once()
+        #     # asyncio.create_task(self.to_send_heartbeat())
+        #     # if(now()-start>=30):
+        #     #     await self.to_send_heartbeat()
+        #     #     start = now()
+        #     await asyncio.sleep(self.procInv)
+        #     #if self.tt:
+        #     #    await asyncio.sleep(self.tt / 1000.0)
+        #     #else:
+        #     #    await asyncio.sleep(self.test_msgs["interval"] / 1000.0)
+        # #self.lp.stop()
+        # self.tMsg = "Stop"
+        # #self.LOG.warn(str(self.msgst))
+        # #self.LOG.warn(str(asyncio.Task.all_tasks()))
+        # self.LOG.info("device stop!")
+        # if len(asyncio.Task.all_tasks()) == 1:
+        #     self.lp.stop()
 
     def create_tasks(self):
         self.task_obj.add_task(
@@ -211,18 +254,19 @@ class Door(BaseSim):
             'heartbeat', self.to_send_heartbeat, 1000000, 1000)
 
     async def msg_dispatch(self):
-        try:
-            #self.LOG.warn("msg_disp")
-            if self.dev_register == False:
-                pass
-            else:
-                if self.msgs:
-                    #self.LOG.warn(str(len(self.msgs)))
-                    msg = self.msgs.pop()
-                    self.to_to_send_msg(msg, ack=b'\x00')
-        except ValueError as Argument:
-            self.LOG.error("msg_dispatch Exception:{}".format(Argument))
-            pass
+        while self.getStopConition() == False:
+            try:
+                #self.LOG.warn("msg_disp")
+                if self.dev_register == False:
+                    pass
+                else:
+                    if self.msgs:
+                        #self.LOG.warn(str(len(self.msgs)))
+                        msg = self.msgs.pop()
+                        self.to_to_send_msg(msg, ack=b'\x00')
+            except ValueError as Argument:
+                self.LOG.error("msg_dispatch Exception:{}".format(Argument))
+            await asyncio.sleep(self.sleep_s)
 
     def status_maintain(self):
         for item in self.SPECIAL_ITEM:
@@ -267,12 +311,16 @@ class Door(BaseSim):
             self.LOG.info(common_APIs.chinese_show("设备已经注册"))
         else:
             self.LOG.info(common_APIs.chinese_show("发送设备注册"))
+            self.init_msgst_time()
             self.to_to_send_msg(json.dumps(self.get_send_msg('COM_DEV_REGISTER')), ack=b'\x00')
 
     async def to_send_heartbeat(self):
-        self.LOG.info('to_send_heartbeat')
-        if self.dev_register:
-            self.to_to_send_msg(json.dumps(self.get_send_msg('COM_HEARTBEAT')), ack=b'\x00')
+        while self.getStopConition()==False:
+            self.LOG.info('to_send_heartbeat')
+            if self.dev_register:
+                self.LOG.info('ready_to_send_heartbeat')
+                self.to_to_send_msg(json.dumps(self.get_send_msg('COM_HEARTBEAT')), ack=b'\x00')
+            await asyncio.sleep(self.hbInv)
 
     def get_upload_status(self):
         # self.LOG.info(common_APIs.chinese_show("设备状态上报"))

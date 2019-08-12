@@ -47,9 +47,9 @@ class ArgHandle():
             '-t', '--time-delay',
             dest='tt',
             action='store',
-            default=0,
+            default=1000,
             type=int,
-            help='time delay(ms) for msg send to server, default time is 500(ms)',
+            help='time interval delay(ms) for msg send to server, default time is 1000(ms)',
         )
         parser.add_argument(
             '-x', '--xx',
@@ -71,7 +71,7 @@ class ArgHandle():
             '-p', '--server-port',
             dest='server_port',
             action='store',
-            default=20001,
+            default=2001,
             type=int,
             help='Specify TCP server port, default is 20001',
         )
@@ -79,7 +79,7 @@ class ArgHandle():
             '-i', '--server-IP',
             dest='server_IP',
             action='store',
-            default='192.168.10.12',
+            default='10.101.70.100',
             help='Specify TCP server IP address',
         )
         parser.add_argument(
@@ -104,20 +104,47 @@ class ArgHandle():
             default=None,#'172.24.9.134',
             help='Specify TCP client IP address',
         )
-        parser.add_argument(
-            '--devlce_timeout',
-            dest='dto',
-            action='store',
-            default=None,  # '172.24.9.134',
-            help='Specify device timeout, the unit is second',
-        )
+        # parser.add_argument(
+        #     '--devlce_timeout',
+        #     dest='dto0',
+        #     action='store',
+        #     default=0,#None,  # '172.24.9.134',
+        #     help='Specify device timeout, the unit is second',
+        # )
         parser.add_argument(
             '--to',
             dest='dto',
             action='store',
-            default=None,  # '172.24.9.134',
-            help='Specify devices timeout seconds,None:never timeout(default),0:willnot exit until rep==rsp'
+            default=0,#None,  # '172.24.9.134',
+            type=float,
+            help='Specify devices timeout seconds,(-1):never timeout(default),0:willnot exit until rep==rsp'
                  '[n]: will exit after [n] seconds',
+        )
+        parser.add_argument(
+            '-disp_delay',
+            dest='disp_sleep_s',
+            action='store',
+            default=20,
+            type = float,
+            help='Specify the disp msg will send in [disp_delay] seconds '
+                 'after the register msg is sent,default is 20(s)',
+        )
+
+        parser.add_argument(
+            '-monitor_s',
+            dest='monitor_s',
+            action='store',
+            default=5,
+            type = float,
+            help='Specify the monitor msg print interval, default is 300(s)',
+        )
+        parser.add_argument(
+            '--index',
+            dest='cmd_index',
+            action='store',
+            default=0,
+            type = int,
+            help='Specify the cmd_index, default is 0',
         )
         return parser
 
@@ -244,11 +271,11 @@ def sys_cleanup():
 def delallLog(doit = True):
     if doit:
         files = os.listdir(os.getcwd())
-        print(files)
+        # print(files)
         for file in files:
             if( file.find(".log") != -1):
                 os.remove(file)
-                print("file:%s is removed" % (file,))
+                # print("file:%s is removed" % (file,))
 
 def getP(up,down):
     if down == 0:
@@ -262,7 +289,7 @@ def genReport(sims=[]):
         strTmp += "TotalClientNum:{}\r\n".format(arg_handle.get_args('device_count'))
         strTmp += "SendTimeDelay:{}s\r\n".format(sims[0].sleep_s)
         ts = round(end-start,3)
-        strTmp += "ConsumTime:{}s\r\n".format(ts)
+        real_ts = 0
         totalSend = 0
         totalRcv = 0
         totalFail = 0
@@ -270,8 +297,10 @@ def genReport(sims=[]):
         if sims:
             for s in sims:
                 for cmd in s.msgst.keys():
-                    #if cmd == "COM_HEARTBEAT":
-                    #    continue
+                    if cmd == "TIMES":
+                        if real_ts < s.msgst[cmd]['spent']:
+                            real_ts = s.msgst[cmd]['spent']
+                        continue
                     if cmd not in detailDict:
                         detailDict[cmd]={'req': 0, 'rsp': 0, 'rsp_fail': 0}
                     if("req" not in s.msgst[cmd]):
@@ -286,8 +315,9 @@ def genReport(sims=[]):
                         detailDict[cmd]["rsp_fail"] += s.msgst[cmd]["rsp_fail"]
                         totalFail += s.msgst[cmd]["rsp_fail"]
                 #strTmp += "{}\r\n".format(str(s.msgst))
-        strTmp += "TotalSend:{}\t\tQPS:{}\r\n".format(totalSend,round(totalSend/ts,3))
-        strTmp += "TotalRcv:{}\t\tQPS:{}\r\n".format(totalRcv,round(totalRcv/ts,3))
+        strTmp += "ConsumTime:{}s\r\n".format(real_ts)
+        strTmp += "TotalSend:{}\t\tQPS:{}\r\n".format(totalSend,round(totalSend/real_ts,3))
+        strTmp += "TotalRcv:{}\t\tQPS:{}\r\n".format(totalRcv,round(totalRcv/real_ts,3))
         strTmp += "TotalFail:{}\r\n".format(totalFail)
         strTmp += "Rcv/Send:{}\r\n".format(getP(totalRcv,totalSend))
         strTmp += "Fail/Rcv:{}\r\n".format(getP(totalFail, totalRcv))
@@ -305,20 +335,73 @@ def genReport(sims=[]):
     except (ValueError) as Argument:
         LOG.error(Argument)
 
+async def GenRealTimeReport(sims:list, sleep_s:float,cmd_index:int):
+    '''实时计算数据并且返回'''
+    while True:
+        bye = False
+        result_dict = dict.fromkeys(["reg_ok_num","total_req","total_rsp","total_rsp_fail","time_spent"],0)
+        result_dict['cmd_index'] = cmd_index
+        try:
+            if sims:
+                for s in sims:
+                    # print(s.msgst.items())
+                    if s.msgst:
+                        for key,val in s.msgst.items():
+                            if key == "TIMES":
+                                # 时间不合并，不打印，仅用于计算自己的QPS
+                                if result_dict["time_spent"] < val['spent']:
+                                    result_dict["time_spent"] = val['spent']
+                                continue
+                            if key == "COM_DEV_REGISTER":
+                                result_dict["reg_ok_num"] += val['rsp']
+                            result_dict["total_req"] += val['req']
+                            result_dict["total_rsp"] += val['rsp']
+                            result_dict["total_rsp_fail"] += val['rsp_fail']
+            print(json.dumps(result_dict))
+            # for i, t in enumerate(asyncio.Task.all_tasks()):
+            #     print("【{}】TASK[{}]:{}".format(t.done(),i, t))
+            done_c = 0
+            for c in asyncio.Task.all_tasks():
+                # 计算当前处于done状态的协程数目
+                if c.done():
+                    done_c = done_c + 1
+            LOG.info("done/all:{}/{}".format(done_c,len(asyncio.Task.all_tasks())))
+            # 当未处于done状态的协程数只剩下1个（就是这个统计协程本身）或者0个的时候就可以退出了
+            # 打印的时候发现有时候这个统计协程本身就是done, 有时候又是runing，所以这里做了这个处理
+            if(done_c >= len(asyncio.Task.all_tasks()) - 1):
+                # 停掉那个一直在跑的循环
+                lp = asyncio.get_event_loop()
+                lp.stop()
+                LOG.info("byebye!")
+                bye = True
+            if bye:
+                # 跳出循环，自裁
+                break
+        except Exception as m_e:
+            LOG.error("monitor_ex:{}".format(repr(m_e)))
+        await asyncio.sleep(sleep_s)
+
+
 if __name__ == '__main__':
-    delallLog()
+    # delallLog()
     sys_init()
     loop = asyncio.get_event_loop()
+    log_level = logging.INFO
+    enable_flog = True
+    monitor_s = arg_handle.get_args('monitor_s')
+    disp_sleep_s = arg_handle.get_args('disp_sleep_s')
+    cmd_index = arg_handle.get_args('cmd_index')
+
     if arg_handle.get_args('device_count') > 1:
-        log_level = logging.WARN
-    else:
-        log_level = logging.INFO
+        log_level = logging.ERROR
+        # enable_flog = False
 
     sims = []
+    ttt = asyncio.ensure_future(GenRealTimeReport(sims,monitor_s,cmd_index))
     start = time.time()
     for i in range(arg_handle.get_args('device_count')):
-        dev_LOG = MyLogger('dev_sim_%d.log' % (
-            arg_handle.get_args('xx') + i), clevel=log_level, flevel=logging.DEBUG, fenable=True)
+        dev_LOG = MyLogger('dev_sim_%d_%d.log' % (cmd_index,
+            arg_handle.get_args('xx') + i), clevel=log_level, flevel=log_level, fenable=enable_flog,cenable=False)
         self_addr = None
         self_ip = None
         if ipv4_list:
@@ -341,18 +424,18 @@ if __name__ == '__main__':
         coro = loop.create_connection(lambda: Door(config_file=configfile, logger=dev_LOG,
                                                    N=arg_handle.get_args('xx') + i,tt=sendInterval,
                                                    encrypt_flag=encryptflag, self_ip=self_ip,
-                                                   lp=loop,to=device_timeout),
+                                                   lp=loop,to=device_timeout,disp_sleep_s = disp_sleep_s),
                                       serverIP, serverPort)
         transport, protocol = loop.run_until_complete(coro)
         asyncio.ensure_future(protocol.run_forever())
         sims.append(protocol)
 
+    # asyncio.ensure_future(GenRealTimeReport())
     loop.run_forever()
     loop.close()
     LOG.warn("All devices is stop!")
     #COM_HEARTBEAT
     LOG.warn(genReport(sims))
-
     #my_cmd = MyCmd(logger=LOG, sim_objs=sims)
     #my_cmd.cmdloop()
     sys_cleanup()

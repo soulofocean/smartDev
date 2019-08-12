@@ -1,2 +1,0 @@
-# smartDev
-devices sims

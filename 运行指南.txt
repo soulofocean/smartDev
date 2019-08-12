@@ -1,0 +1,3 @@
+1、修改batch_main_test.py中配置，详见文件中注释
+2、新增或者修改smartDev\protocol\config下的配置文件，配置设备消息，需要和1中--configfile对应
+3、用python或者py -3 运行batch_main_test.py

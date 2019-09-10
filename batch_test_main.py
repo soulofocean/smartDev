@@ -22,7 +22,7 @@ dev_config = [
         # 要运行的可执行程序
         "dev_exe": "smart_dev.py",
         # 网关IP和端口，类型是一个元组
-        "server_addr": ("10.101.70.100",2001),
+        "server_addr": ("10.134.195.20",2001),
         # 启动的设备数目
         "dev_count": 1,
         # 指定模拟器的配置文件，需要和protocol下的config文件对应
@@ -32,7 +32,7 @@ dev_config = [
         # 发包超时时间：【0：发完包后收包==发包退出，-1：即使发完包也永远循环不退出，N：运行超过N秒后就退出】
         "send_pkt_timeout": 0,
         # 发包间隔 单位秒
-        "pkt_period_s": 1,
+        "pkt_period_s": 10,
         # 一个进程包含的协程数,由于用了Select，目前不能超过500
         "max_thread_count": 500,
         # 起始设备ID偏移量，默认为0
@@ -246,12 +246,12 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
             if "{" in lineStr:
                 tmpDict = json.loads(lineStr)
                 # 转换成功，进行数据获取
-                # logging.info(tmpDict)
+                logging.info(tmpDict)
                 index = tmpDict['cmd_index']
                 totalRegisterOK = tmpDict['reg_ok_num']
                 # sendAliveNum = tmpDict['sendAliveNum']
                 sendTotalNum = tmpDict['total_req']
-                recv200OkNum = tmpDict['total_rsp']
+                recv200OkNum = tmpDict['total_rsp'] - tmpDict['total_rsp_fail']
                 recvFailNum = tmpDict['total_rsp_fail']
                 totalConsumTime = tmpDict['time_spent']
                 if index in resutlDict:
@@ -298,6 +298,7 @@ def GenReport(resultDict: dict, sleep_sec: float):
         if (monitor_run == 0):
             break
         if resultDict:
+            lastTime = info.totalTimeSpent
             info.resetNum()
             for k, v in resultDict.items():
                 info.subTotalSendCount += v.subTotalSendCount
@@ -310,9 +311,12 @@ def GenReport(resultDict: dict, sleep_sec: float):
                 info.subSendQps += v.getSubSendQps()
                 info.subRcvQps += v.getSubRsvQps()
                 info.subRealQps += v.getSubRealQps()
+                if info.totalTimeSpent < v.totalTimeSpent:
+                    info.totalTimeSpent = v.totalTimeSpent
                 # info.totalSendQps += v.getTotalSendQps()
                 # info.totalRcvQps += v.getTotalRsvQps()
                 # info.totalRealQps += v.getTotalRealQps()
+            info.subTotalTimeSpent = info.totalTimeSpent - lastTime
             logging.info('=' * 60)
             logging.info("{}{}{}".format('-'*23,'Real Time Data','-'*23))
             # logging.info('-' * 60)
@@ -323,6 +327,7 @@ def GenReport(resultDict: dict, sleep_sec: float):
             logging.info('{:30}:{:29.2f}'.format("PeriodSendQps", info.subSendQps))
             logging.info('{:30}:{:29.2f}'.format("PeriodRcvQps", info.subRcvQps))
             logging.info('{:30}:{:29.2f}'.format("PeriodRealQps", info.subRealQps))
+            logging.info('{:30}:{:29.2f}'.format("PeriodTimeSpent", info.subTotalTimeSpent))
             logging.info('-' * 60)
             logging.info("{}{}{}".format('-'*25,'Total Data','-'*25))
             # logging.info('-' * 60)
@@ -331,6 +336,7 @@ def GenReport(resultDict: dict, sleep_sec: float):
             logging.info('{:30}:{:29}'.format("totalRsvSuccessCount", info.totalRsv200okCount))
             logging.info('{:30}:{:29}'.format("totalRsvFailCount", info.totalRsvFailCount))
             logging.info('{:30}:{:29.2%}'.format("totalSuccessRate", info.getTotalSuccessRate()))
+            logging.info('{:30}:{:29.2f}'.format("totalTimeSpent", info.totalTimeSpent))
             # logging.info('{:30}:{:29.2f}'.format("totalSendQps", info.totalSendQps))
             # logging.info('{:30}:{:29.2f}'.format("totalRcvQps", info.totalRcvQps))
             # logging.info('{:30}:{:29.2f}'.format("totalRealQps", info.totalRealQps))

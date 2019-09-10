@@ -33,25 +33,25 @@ from protocol.light_protocol import SDK
 class BaseSim(SDK):
     __metaclass__ = ABCMeta
 
-    def init_msgst_time(self,time_val=None):
-        if time_val == None:
-            time_val = time.time()
-        self.msgst['TIMES']['reg'] = time_val
-        self.msgst['TIMES']['disp'] = time_val
-        self.msgst['TIMES']['spent'] = 0
-
-    def set_msgst_disp_time(self,time_val=None):
-        if time_val == None:
-            time_val = time.time()
-        self.msgst['TIMES']['disp'] = time_val
-        self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
-
-    def get_msgst_spent_time(self):
-        return self.msgst['TIMES']['spent']
+    # def init_msgst_time(self,time_val=None):
+    #     if time_val == None:
+    #         time_val = time.time()
+    #     self.msgst['TIMES']['reg'] = time_val
+    #     self.msgst['TIMES']['disp'] = time_val
+    #     self.msgst['TIMES']['spent'] = 0
+    #
+    # def set_msgst_disp_time(self,time_val=None):
+    #     if time_val == None:
+    #         time_val = time.time()
+    #     self.msgst['TIMES']['disp'] = time_val
+    #     self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
+    #
+    # def get_msgst_spent_time(self):
+    #     return self.msgst['TIMES']['spent']
 
 
     def update_msgst(self, command, direct):
-        time_val = time.time()
+        # time_val = time.time()
         if command in self.msgst:
             pass
         else:
@@ -61,7 +61,7 @@ class BaseSim(SDK):
                 'rsp_fail': 0,
             }
         self.msgst[command][direct] += 1
-        self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
+        # self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
 
     def set_item(self, item, value):
         if item in self.__dict__:
@@ -212,13 +212,13 @@ class Door(BaseSim):
         self.sleep_s /= 1000.0
         now = lambda : time.time()
         start = now()
-        self.msgst["TIMES"]["REG"] = now()
+        # self.msgst["TIMES"]["REG"] = now()
         self.LOG.warn("Sleep_second is {}".format(self.sleep_s))
         asyncio.create_task(self.to_send_heartbeat())
         asyncio.create_task(self.schedule())
         asyncio.create_task(self.send_data_loop())
         await asyncio.sleep(self.disp_sleep_s)
-        self.set_msgst_disp_time()
+        # self.set_msgst_disp_time()
         asyncio.create_task(self.msg_dispatch())
         # while self.getStopConition()==False:
         #     await asyncio.sleep(10)
@@ -311,7 +311,7 @@ class Door(BaseSim):
             self.LOG.info(common_APIs.chinese_show("设备已经注册"))
         else:
             self.LOG.info(common_APIs.chinese_show("发送设备注册"))
-            self.init_msgst_time()
+            # self.init_msgst_time()
             self.to_to_send_msg(json.dumps(self.get_send_msg('COM_DEV_REGISTER')), ack=b'\x00')
 
     async def to_send_heartbeat(self):

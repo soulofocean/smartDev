@@ -73,13 +73,13 @@ class ArgHandle():
             action='store',
             default=2001,
             type=int,
-            help='Specify TCP server port, default is 20001',
+            help='Specify TCP server port, default is 2001',
         )
         parser.add_argument(
             '-i', '--server-IP',
             dest='server_IP',
             action='store',
-            default='10.101.70.100',
+            default='10.134.195.20',
             help='Specify TCP server IP address',
         )
         parser.add_argument(
@@ -134,7 +134,7 @@ class ArgHandle():
             '-monitor_s',
             dest='monitor_s',
             action='store',
-            default=5,
+            default=10,
             type = float,
             help='Specify the monitor msg print interval, default is 300(s)',
         )
@@ -297,10 +297,10 @@ def genReport(sims=[]):
         if sims:
             for s in sims:
                 for cmd in s.msgst.keys():
-                    if cmd == "TIMES":
-                        if real_ts < s.msgst[cmd]['spent']:
-                            real_ts = s.msgst[cmd]['spent']
-                        continue
+                    # if cmd == "TIMES":
+                    #     if real_ts < s.msgst[cmd]['spent']:
+                    #         real_ts = s.msgst[cmd]['spent']
+                    #     continue
                     if cmd not in detailDict:
                         detailDict[cmd]={'req': 0, 'rsp': 0, 'rsp_fail': 0}
                     if("req" not in s.msgst[cmd]):
@@ -315,9 +315,9 @@ def genReport(sims=[]):
                         detailDict[cmd]["rsp_fail"] += s.msgst[cmd]["rsp_fail"]
                         totalFail += s.msgst[cmd]["rsp_fail"]
                 #strTmp += "{}\r\n".format(str(s.msgst))
-        strTmp += "ConsumTime:{}s\r\n".format(real_ts)
-        strTmp += "TotalSend:{}\t\tQPS:{}\r\n".format(totalSend,round(totalSend/real_ts,3))
-        strTmp += "TotalRcv:{}\t\tQPS:{}\r\n".format(totalRcv,round(totalRcv/real_ts,3))
+        strTmp += "ConsumTime:{}s\r\n".format(ts)
+        strTmp += "TotalSend:{}\t\tQPS:{}\r\n".format(totalSend,round(totalSend/ts,3))
+        strTmp += "TotalRcv:{}\t\tQPS:{}\r\n".format(totalRcv,round(totalRcv/ts,3))
         strTmp += "TotalFail:{}\r\n".format(totalFail)
         strTmp += "Rcv/Send:{}\r\n".format(getP(totalRcv,totalSend))
         strTmp += "Fail/Rcv:{}\r\n".format(getP(totalFail, totalRcv))
@@ -337,23 +337,25 @@ def genReport(sims=[]):
 
 async def GenRealTimeReport(sims:list, sleep_s:float,cmd_index:int):
     '''实时计算数据并且返回'''
+    start = time.time()
     while True:
         bye = False
         result_dict = dict.fromkeys(["reg_ok_num","total_req","total_rsp","total_rsp_fail","time_spent"],0)
         result_dict['cmd_index'] = cmd_index
         try:
             if sims:
+                result_dict["time_spent"] = time.time() - start
                 for s in sims:
                     # print(s.msgst.items())
                     if s.msgst:
                         for key,val in s.msgst.items():
-                            if key == "TIMES":
-                                # 时间不合并，不打印，仅用于计算自己的QPS
-                                if result_dict["time_spent"] < val['spent']:
-                                    result_dict["time_spent"] = val['spent']
-                                continue
+                            # if key == "TIMES":
+                            #     # 时间不合并，不打印，仅用于计算自己的QPS
+                            #     if result_dict["time_spent"] < val['spent']:
+                            #         result_dict["time_spent"] = val['spent']
+                            #     continue
                             if key == "COM_DEV_REGISTER":
-                                result_dict["reg_ok_num"] += val['rsp']
+                                result_dict["reg_ok_num"] += val['rsp'] - val['rsp_fail']
                             result_dict["total_req"] += val['req']
                             result_dict["total_rsp"] += val['rsp']
                             result_dict["total_rsp_fail"] += val['rsp_fail']

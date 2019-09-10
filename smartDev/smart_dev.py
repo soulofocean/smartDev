@@ -402,7 +402,7 @@ if __name__ == '__main__':
     ttt = asyncio.ensure_future(GenRealTimeReport(sims,monitor_s,cmd_index))
     start = time.time()
     for i in range(arg_handle.get_args('device_count')):
-        dev_LOG = MyLogger('dev_sim_%d_%d.log' % (cmd_index,
+        dev_LOG = MyLogger('.\\LOG\\dev_sim_%d_%d.log' % (cmd_index,
             arg_handle.get_args('xx') + i), clevel=log_level, flevel=log_level, fenable=enable_flog,cenable=False)
         self_addr = None
         self_ip = None

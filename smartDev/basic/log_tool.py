@@ -80,7 +80,7 @@ class MyLogger:
 
         # 设置文件日志
         if fenable == True:
-            self.fh = logging.FileHandler(path)
+            self.fh = logging.FileHandler(path,encoding='utf-8')
             self.fh.setFormatter(self.fmt)
             self.fh.setLevel(flevel)
             self.p.addHandler(self.fh)

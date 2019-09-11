@@ -48,7 +48,7 @@ Attribute_initialization = {
         "round": 1,
         "msgs": {
             #"COM_UPLOAD_DEV_STATUS": 30,
-            "COM_UPLOAD_RECORD.Data[0].RecordType.30001": 20,
+            "COM_UPLOAD_RECORD.Data[0].RecordType.30001": 100,
             # "COM_UPLOAD_EVENT.Data[0].EventType.30301": 10,
         }
     }

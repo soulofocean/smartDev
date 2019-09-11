@@ -7,49 +7,52 @@ import json
 import threading
 import gevent
 from gevent import monkey
+import ConfigModule
 
 monkey.patch_all()
 # 每个进程启动时间间隔 单位秒
-process_start_delay = 0.1
+process_start_delay = ConfigModule.process_start_delay
 # 监控打印间隔，时间秒
-monitor_inv_sec = 300
-dev_config = [
-    {
-        # 可执行程序所在文件夹
-        "dev_folder": "smartDev",
-        # 用来启动可执行程序的命令行，可能是python 可能是python3 也可能是 py -3和执行电脑的环境配置相关
-        "cmd_arr":("py","-3"),
-        # 要运行的可执行程序
-        "dev_exe": "smart_dev.py",
-        # 网关IP和端口，类型是一个元组
-        "server_addr": ("10.134.195.20",2001),
-        # 启动的设备数目
-        "dev_count": 1,
-        # 指定模拟器的配置文件，需要和protocol下的config文件对应
-        "config_file": "door_conf",
-        # 注册等待时间,单位秒
-        "send_pkt_delay": 30,
-        # 发包超时时间：【0：发完包后收包==发包退出，-1：即使发完包也永远循环不退出，N：运行超过N秒后就退出】
-        "send_pkt_timeout": 0,
-        # 发包间隔 单位秒
-        "pkt_period_s": 10,
-        # 一个进程包含的协程数,由于用了Select，目前不能超过500
-        "max_thread_count": 500,
-        # 起始设备ID偏移量，默认为0
-        "default_offset": 0,
-    },
-    # {
-    #     "dev_type" : 2029,
-    #     "dev_count" : 2,
-    #     "dev_exe" : "sipClientPerf.exe",
-    #     "dev_folder":"T2029",
-    #     "pkt_num": 1,
-    #     "pkt_period_s": 1,
-    #     "max_thread_count": 300,
-    #     "default_offset": 0,
-    #     "send_pkt_delay": 20
-    # }
-]
+monitor_inv_sec = ConfigModule.monitor_inv_sec
+my_dev_config = eval("ConfigModule.{}".format(ConfigModule.use_config))
+# dev_config = [
+#     {
+#         # 可执行程序所在文件夹
+#         "dev_folder": "smartDev",
+#         # 用来启动可执行程序的命令行，可能是python 可能是python3 也可能是 py -3和执行电脑的环境配置相关
+#         "cmd_arr": ("py", "-3"),
+#         # 要运行的可执行程序
+#         "dev_exe": "smart_dev.py",
+#         # 网关IP和端口，类型是一个元组
+#         "server_addr": ("10.134.195.20", 2001),
+#         # 启动的设备数目
+#         "dev_count": 1,
+#         # 指定模拟器的配置文件，需要和protocol下的config文件对应
+#         "config_file": "door_conf",
+#         # 注册等待时间,单位秒
+#         "send_pkt_delay": 30,
+#         # 发包超时时间：【0：发完包后收包==发包退出，-1：即使发完包也永远循环不退出，N：运行超过N秒后就退出】
+#         "send_pkt_timeout": 0,
+#         # 发包间隔 单位秒
+#         "pkt_period_s": 1,
+#         # 一个进程包含的协程数,由于用了Select，目前不能超过500
+#         "max_thread_count": 500,
+#         # 起始设备ID偏移量，默认为0
+#         "default_offset": 0,
+#     },
+#     # {
+#     #     "dev_type" : 2029,
+#     #     "dev_count" : 2,
+#     #     "dev_exe" : "sipClientPerf.exe",
+#     #     "dev_folder":"T2029",
+#     #     "pkt_num": 1,
+#     #     "pkt_period_s": 1,
+#     #     "max_thread_count": 300,
+#     #     "default_offset": 0,
+#     #     "send_pkt_delay": 20
+#     # }
+# ]
+
 
 def get_avg_list(orgin_num: int, max_num: int):
     """线程负载均衡计算和分配
@@ -72,6 +75,7 @@ def get_avg_list(orgin_num: int, max_num: int):
             else:
                 avg_list.append(div_num)
     return avg_list
+
 
 # cd smartDev&&py -3 smart_dev.py -i 10.101.70.100 -p 2001 -c 2 --config door_conf -disp_delay 10 --to 0
 #                                 -t 1000 -x 0 -monitor_s 300 --index 0
@@ -100,8 +104,8 @@ def get_start_arg_list(dev_config):
         for dev_avg_c in dev_avg_list:
             arg_tmp = list()
             arg_tmp.append("cd")
-            arg_tmp.append("{}&&{}".format(dev_folder,cmd_arr[0]))
-            if(len(cmd_arr) > 1):
+            arg_tmp.append("{}&&{}".format(dev_folder, cmd_arr[0]))
+            if (len(cmd_arr) > 1):
                 arg_tmp.extend(cmd_arr[1:])
             arg_tmp.append(file_name)
             arg_tmp.extend(["-i", "{}".format(server_addr[0])])
@@ -135,7 +139,6 @@ def get_start_arg_list(dev_config):
             #                  ])
             # dev_offset += dev_avg_c
     return arg_list
-
 
 
 class MonitorType:
@@ -290,7 +293,7 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
             logging.error("ProcessLineStr Exception:{}".format(ex1.__repr__()))
 
 
-def GenReport(resultDict: dict, sleep_sec: float):
+def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
     """打印出来报告 resultDict:报告数据来源 sleep_sec:生成报告间隔时间"""
     info = MonitorType(-1)
     while 1:
@@ -318,7 +321,7 @@ def GenReport(resultDict: dict, sleep_sec: float):
                 # info.totalRealQps += v.getTotalRealQps()
             info.subTotalTimeSpent = info.totalTimeSpent - lastTime
             logging.info('=' * 60)
-            logging.info("{}{}{}".format('-'*23,'Real Time Data','-'*23))
+            logging.info("{}{}{}".format('-' * 23, 'Real Time Data', '-' * 23))
             # logging.info('-' * 60)
             logging.info('{:30}:{:29}'.format("PeriodSendCount", info.subTotalSendCount))
             logging.info('{:30}:{:29}'.format("PeriodRsvSuccessCount", info.subTotalRsv200okCount))
@@ -329,7 +332,7 @@ def GenReport(resultDict: dict, sleep_sec: float):
             logging.info('{:30}:{:29.2f}'.format("PeriodRealQps", info.subRealQps))
             logging.info('{:30}:{:29.2f}'.format("PeriodTimeSpent", info.subTotalTimeSpent))
             logging.info('-' * 60)
-            logging.info("{}{}{}".format('-'*25,'Total Data','-'*25))
+            logging.info("{}{}{}".format('-' * 25, 'Total Data', '-' * 25))
             # logging.info('-' * 60)
             logging.info('{:30}:{:29}'.format("totalRegisterOK", info.totalRegisterOK))
             logging.info('{:30}:{:29}'.format("totalSendCount", info.totalSendCount))
@@ -344,6 +347,8 @@ def GenReport(resultDict: dict, sleep_sec: float):
             logging.info('=' * 60)
         else:
             logging.info("Waiting for data...")
+            time.sleep(console_num * 1)
+            continue
         time.sleep(sleep_sec)
     logging.info('GenReport quit')
 
@@ -353,7 +358,7 @@ def ProcessConsoleMsg(clist, resultDict):
     needbreak = 0
     while 1:
         needbreak = 1
-        for i,c in enumerate(clist):
+        for i, c in enumerate(clist):
             line = c.stdout.readline()
             if line and len(line) > 0:
                 lineStr = line.decode('gbk').replace('\r', '').replace('\n', '')
@@ -375,7 +380,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG,
                         format='[%(asctime)10s.%(msecs)03d][%(filename)s line:%(lineno)03d][%(levelname)-5s]%(message)s',
                         datefmt='%F %T')
-    arg_list = get_start_arg_list(dev_config)
+    arg_list = get_start_arg_list(my_dev_config)
     clist = []
     for i, arg in enumerate(arg_list):
         logging.info("[i={}] arg = {}".format(i, arg))
@@ -385,6 +390,6 @@ if __name__ == "__main__":
         logging.debug('=' * 60)
     monitor_run = 1
     g1 = gevent.spawn(ProcessConsoleMsg, clist, resultDict)
-    g2 = gevent.spawn(GenReport, resultDict, monitor_inv_sec)
+    g2 = gevent.spawn(GenReport, resultDict, monitor_inv_sec, len(arg_list))
     gevent.joinall([g1, g2])
     logging.info('main End')

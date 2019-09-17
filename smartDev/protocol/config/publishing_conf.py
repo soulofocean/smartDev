@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+  #!/usr/bin/env python
 # coding=UTF-8
 import datetime
 import random
@@ -7,17 +7,16 @@ import re
 # 设备初始化参数
 Attribute_initialization = {
     #10012009201901241416
-    # "mac_list": ['59:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(8000, 9000)],
-    "mac_list": ['82:FC:DB:DA:' + re.sub(r'(?P<xx>\d\d)', "\g<xx>:", "{:04d}".format(i)) for i in range(3000, 4000)],
-    "DeviceFacturer": 1015,
-    "DeviceType": 2009,
-    "subDeviceType": 3010,
+    "mac_list": ['32:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 2000)],
+    "DeviceFacturer": 1017,
+    "DeviceType": 2018,
+    "subDeviceType": 3019,
     "_type": 0,
-    "_name": 'dog door',
+    "_name": 'publishing',
     "_manufacturer": 'HDIOT',
     "_ip": "192.168.0.235",
     "_mask": '255.255.255.0',
-    "_version": '1.0.01',
+    "_version": 'S905X_X9PRO',
     "_time": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode('utf-8'),
     "_appVersionInfo": 'appVersionInfo.8.8.8',
     "_fileServerUrl": 'http://192.168.10.1/noexist',
@@ -48,8 +47,8 @@ Attribute_initialization = {
         "round": 1,
         "msgs": {
             #"COM_UPLOAD_DEV_STATUS": 30,
-            "COM_UPLOAD_RECORD.Data[0].RecordType.30001": 100,
-            # "COM_UPLOAD_EVENT.Data[0].EventType.30301": 10,
+            "COM_UPLOAD_RECORD.Data[0].RecordType.30001": 180,
+            "COM_UPLOAD_EVENT.Data[0].EventType.30301": 180,
         }
     }
 }

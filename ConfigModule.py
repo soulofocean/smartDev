@@ -3,7 +3,7 @@
 process_start_delay = 0.1
 # 监控打印间隔，时间秒
 monitor_inv_sec = 10
-use_config = 'dev_config2'
+use_config = 'dev_config'
 dev_config = [
     {
         # 可执行程序所在文件夹
@@ -23,7 +23,7 @@ dev_config = [
         # 发包超时时间：【0：发完包后收包==发包退出，-1：即使发完包也永远循环不退出，N：运行超过N秒后就退出】
         "send_pkt_timeout": 0,
         # 发包间隔 单位秒
-        "pkt_period_s": 1,
+        "pkt_period_s": 0.1,
         # 一个进程包含的协程数,由于用了Select，目前不能超过500
         "max_thread_count": 500,
         # 起始设备ID偏移量，默认为0

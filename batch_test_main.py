@@ -4,7 +4,6 @@ import math
 import time
 import logging
 import json
-import threading
 import gevent
 from gevent import monkey
 import ConfigModule
@@ -15,6 +14,8 @@ process_start_delay = ConfigModule.process_start_delay
 # 监控打印间隔，时间秒
 monitor_inv_sec = ConfigModule.monitor_inv_sec
 my_dev_config = eval("ConfigModule.{}".format(ConfigModule.use_config))
+
+
 # dev_config = [
 #     {
 #         # 可执行程序所在文件夹
@@ -96,7 +97,7 @@ def get_start_arg_list(dev_config):
         config_file = dev_dict["config_file"]
         send_pkt_delay = dev_dict["send_pkt_delay"]
         send_pkt_timeout = dev_dict["send_pkt_timeout"]
-        pkt_period_ms = dev_dict["pkt_period_s"] * 1000
+        pkt_period_ms = int(dev_dict["pkt_period_s"] * 1000)
         default_offset = dev_dict["default_offset"]
         max_thread_count = dev_dict["max_thread_count"]
         dev_avg_list = get_avg_list(dev_c, max_thread_count)
@@ -170,7 +171,7 @@ class MonitorType:
         return str(self.__dict__)
 
     def getSubSendQps(self):
-        '''计算一个统计周期内的发送QPS'''
+        """计算一个统计周期内的发送QPS"""
         if (self.subTotalTimeSpent == 0):
             return 0
         return self.subTotalSendCount / self.subTotalTimeSpent
@@ -347,14 +348,14 @@ def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
             logging.info('=' * 60)
         else:
             logging.info("Waiting for data...")
-            time.sleep(console_num * 1)
+            time.sleep(console_num * (1+process_start_delay))
             continue
         time.sleep(sleep_sec)
     logging.info('GenReport quit')
 
 
 def ProcessConsoleMsg(clist, resultDict):
-    '''将各个控制台中的标准输出流汇总到resultDict中 clist:控制台对象列表 resultDict:存放结果数据的字典'''
+    """将各个控制台中的标准输出流汇总到resultDict中 clist:控制台对象列表 resultDict:存放结果数据的字典"""
     needbreak = 0
     while 1:
         needbreak = 1

@@ -46,7 +46,7 @@ class ArgHandle():
             '-t', '--time-delay',
             dest='tt',
             action='store',
-            default=1000,
+            default=6000,
             type=int,
             help='time interval delay(ms) for msg send to server, default time is 1000(ms)',
         )
@@ -85,14 +85,14 @@ class ArgHandle():
             '--config',
             dest='config_file',
             action='store',
-            default="publishing_conf",
+            default="park_conf",
             help='Specify device type',
         )
         parser.add_argument(
             '-c', '--count',
             dest='device_count',
             action='store',
-            default=1,
+            default=2,
             type=int,
             help='Specify how many devices to start, default is only 1',
         )
@@ -133,7 +133,7 @@ class ArgHandle():
             '-monitor_s',
             dest='monitor_s',
             action='store',
-            default=10,
+            default=30,
             type=float,
             help='Specify the monitor msg print interval, default is 300(s)',
         )
@@ -144,6 +144,15 @@ class ArgHandle():
             default=0,
             type=int,
             help='Specify the cmd_index, default is 0',
+        )
+        # change_creno
+        parser.add_argument(
+            '-change_creno',
+            dest='change_creno',
+            action='store',
+            default=False,
+            type=bool,
+            help='Specify whether the credict no should increse with xx',
         )
         return parser
 
@@ -427,10 +436,12 @@ if __name__ == '__main__':
         encryptflag = arg_handle.get_args('encrypt')
         serverIP = arg_handle.get_args('server_IP')
         serverPort = arg_handle.get_args('server_port')
+        change_creno = arg_handle.get_args('change_creno')
         coro = loop.create_connection(lambda: Door(config_file=configfile, logger=dev_LOG,
                                                    N=arg_handle.get_args('xx') + i, tt=sendInterval,
                                                    encrypt_flag=encryptflag, self_ip=self_ip,
-                                                   lp=loop, to=device_timeout, disp_sleep_s=disp_sleep_s),
+                                                   lp=loop, to=device_timeout, disp_sleep_s=disp_sleep_s,
+                                                   change_creno=change_creno),
                                       serverIP, serverPort)
         transport, protocol = loop.run_until_complete(coro)
         asyncio.ensure_future(protocol.run_forever())

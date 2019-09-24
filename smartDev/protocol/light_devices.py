@@ -49,7 +49,6 @@ class BaseSim(SDK):
     # def get_msgst_spent_time(self):
     #     return self.msgst['TIMES']['spent']
 
-
     def update_msgst(self, command, direct):
         # time_val = time.time()
         if command in self.msgst:
@@ -110,8 +109,8 @@ class BaseSim(SDK):
 
 
 class Door(BaseSim):
-    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip = None, lp=None,
-                 to=None,disp_sleep_s =10):
+    def __init__(self, config_file, logger, N=0, tt=None, encrypt_flag=0, self_ip=None, lp=None,
+                 to=None, disp_sleep_s=10, change_creno=False):
         super(Door, self).__init__(logger, encrypt_flag=encrypt_flag)
         module_name = "protocol.config.%s" % config_file
         mod = import_module(module_name)
@@ -121,6 +120,7 @@ class Door(BaseSim):
         self.tt = tt
         self.encrypt_flag = encrypt_flag
         self.attribute_initialization()
+
         self.device_id = self._deviceID
         self.msgst = defaultdict(lambda: {})
         if self_ip:
@@ -134,8 +134,31 @@ class Door(BaseSim):
         self.task_obj = Task('Washer-task', self.LOG)
         self.dev_register = False
         self.command_list = getattr(self.sim_config, "Command_list")
-        #self.create_tasks()
+        # self.create_tasks()
 
+        self.lp = lp
+        self.tMsg = "Start"
+        self.summaryDict = self.getSummaryDict()
+        # self.sleep_s = self.tt
+        self.disp_sleep_s = disp_sleep_s
+        self.beginTime = time.time()
+        self.breakTime = to
+        # 偏移量是偶数的才改，奇数的不改车牌
+        # 为了保证偏移为1,3,5...N的出口车牌号与0,2,4...N-1的车牌号一致
+        if change_creno:
+            # 出入口车牌要同步递增
+            creno = self.__getattribute__('_credenceNo')
+            # print("creno_0:{}".format(creno))
+            creno = creno[:2] + str(int(creno[2:]) + N//2)
+            # print("creno_1:{}".format(creno))
+            self.__setattr__('_credenceNo', creno)
+            # 出口上报要延迟半个周期
+            if N & 0x1 != 0:
+                # print("creno_2:{}".format(self.__getattribute__('_credenceNo')))
+                # 多延迟半个周期的启动 tt的单位是毫秒，sleep_s的单位是秒所以要除以1000
+                self.disp_sleep_s += self.tt / 1000 * 0.5
+            # print("ID:{} NO:{}".format(self._deviceID, self._credenceNo))
+            # print(self._credenceNo[-4:])
         self.msgs = []
         for msg_name in self.test_msgs["msgs"]:
             tmp_msg = msg_name.split('.')
@@ -150,13 +173,6 @@ class Door(BaseSim):
                 self.msgs.append(msg)
         self.msgs *= self.test_msgs["round"]
         random.shuffle(self.msgs)
-        self.lp=lp
-        self.tMsg="Start"
-        self.summaryDict = self.getSummaryDict()
-        # self.sleep_s = self.tt
-        self.disp_sleep_s = disp_sleep_s
-        self.beginTime = time.time()
-        self.breakTime = to
         self.LOG.info("device start!")
 
     def getSummaryDict(self):
@@ -168,15 +184,15 @@ class Door(BaseSim):
         return tmpDict
 
     def getStopConition(self):
-        #self.LOG.warn(str(len(self.msgs)))
+        # self.LOG.warn(str(len(self.msgs)))
         if self.breakTime == None or self.breakTime < 0:
             # self.LOG.debug("1")
             return False
-        if not self.breakTime == 0 and time.time()-self.beginTime>=self.breakTime:
-            self.LOG.warn("stop for time out, timespan is {:.2f}".format(time.time()-self.beginTime))
+        if not self.breakTime == 0 and time.time() - self.beginTime >= self.breakTime:
+            self.LOG.warn("stop for time out, timespan is {:.2f}".format(time.time() - self.beginTime))
             # self.LOG.debug("2")
             return True
-        if(self.msgs):
+        if (self.msgs):
             # self.LOG.debug("3")
             return False
         else:
@@ -184,12 +200,12 @@ class Door(BaseSim):
                 self.LOG.info(str(self.summaryDict))
                 self.LOG.info(str(self.msgst))
                 for k in self.summaryDict:
-                    if k not in self.msgst or not self.msgst[k]["rsp"] ==  self.summaryDict[k]:
+                    if k not in self.msgst or not self.msgst[k]["rsp"] == self.summaryDict[k]:
                         # self.LOG.debug("4")
                         return False
-                #print(self.msgst)
-                if("COM_HEARTBEAT" in self.msgst):
-                    if(self.msgst["COM_HEARTBEAT"]["req"] == self.msgst["COM_HEARTBEAT"]["rsp"]):
+                # print(self.msgst)
+                if ("COM_HEARTBEAT" in self.msgst):
+                    if (self.msgst["COM_HEARTBEAT"]["req"] == self.msgst["COM_HEARTBEAT"]["rsp"]):
                         # self.LOG.debug("5")
                         return True
                     else:
@@ -210,7 +226,7 @@ class Door(BaseSim):
         if self.tt:
             self.sleep_s = self.tt
         self.sleep_s /= 1000.0
-        now = lambda : time.time()
+        now = lambda: time.time()
         start = now()
         # self.msgst["TIMES"]["REG"] = now()
         self.LOG.warn("Sleep_second is {}".format(self.sleep_s))
@@ -256,13 +272,15 @@ class Door(BaseSim):
     async def msg_dispatch(self):
         while self.getStopConition() == False:
             try:
-                #self.LOG.warn("msg_disp")
+                # self.LOG.warn("msg_disp")
                 if self.dev_register == False:
                     pass
                 else:
                     if self.msgs:
-                        #self.LOG.warn(str(len(self.msgs)))
+                        # self.LOG.warn(str(len(self.msgs)))
                         msg = self.msgs.pop()
+                        # print("{}:{} disp".format(time.time(), self._deviceID))
+                        # print("{}:{}".format(self._deviceID,msg))
                         self.to_to_send_msg(msg, ack=b'\x00')
             except ValueError as Argument:
                 self.LOG.error("msg_dispatch Exception:{}".format(Argument))
@@ -315,7 +333,7 @@ class Door(BaseSim):
             self.to_to_send_msg(json.dumps(self.get_send_msg('COM_DEV_REGISTER')), ack=b'\x00')
 
     async def to_send_heartbeat(self):
-        while self.getStopConition()==False:
+        while self.getStopConition() == False:
             self.LOG.info('to_send_heartbeat')
             if self.dev_register:
                 self.LOG.info('ready_to_send_heartbeat')
@@ -341,7 +359,7 @@ class Door(BaseSim):
         return json.dumps(report_msg)
 
     def dev_protocol_handler(self, msg, ack=False):
-        #self.LOG.warn(str(msg))
+        # self.LOG.warn(str(msg))
         if ack:
             self.update_msgst(msg['Command'], 'rsp')
             if not msg['Result'] == 0:
@@ -362,7 +380,6 @@ class Door(BaseSim):
                 return None
         else:
             self.update_msgst(msg['Command'], 'req')
-
 
         if msg['Command'] == 'COM_HEARTBEAT':
             pass
@@ -416,11 +433,11 @@ class Door(BaseSim):
             self.add_item(attribute_params, attribute_params_value)
 
         self._mac = self.mac_list[self.N]
-        #"_deviceID": "1005200958FCDBDA5380",
-        #"_subDeviceID": "301058FCDBDA53800001",
+        # "_deviceID": "1005200958FCDBDA5380",
+        # "_subDeviceID": "301058FCDBDA53800001",
         self._deviceID = str(self.DeviceFacturer) + \
-            str(self.DeviceType) + self._mac.replace(":", '')
+                         str(self.DeviceType) + self._mac.replace(":", '')
         self._encrypt_key = self._deviceID[-16:].encode('utf-8')
-        #self._decrypt_key = self._deviceID[-16:].encode('utf-8')
+        # self._decrypt_key = self._deviceID[-16:].encode('utf-8')
         self._subDeviceID = str(self.subDeviceType) + \
-            self._mac.replace(":", '') + "%04d" % (self.N + 1)
+                            self._mac.replace(":", '') + "%04d" % (self.N + 1)

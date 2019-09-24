@@ -100,6 +100,9 @@ def get_start_arg_list(dev_config):
         pkt_period_ms = int(dev_dict["pkt_period_s"] * 1000)
         default_offset = dev_dict["default_offset"]
         max_thread_count = dev_dict["max_thread_count"]
+        change_creno = False
+        if "change_creno" in dev_dict:
+            change_creno = dev_dict["change_creno"]
         dev_avg_list = get_avg_list(dev_c, max_thread_count)
         dev_offset = 0
         for dev_avg_c in dev_avg_list:
@@ -119,6 +122,8 @@ def get_start_arg_list(dev_config):
             arg_tmp.extend(["-x", "{}".format(default_offset + dev_offset)])
             arg_tmp.extend(["-monitor_s", "{}".format(monitor_inv_sec)])
             arg_tmp.extend(["--index", "{}".format(global_cmd_id)])
+            # change_creno
+            arg_tmp.extend(["-change_creno", "{}".format(change_creno)])
             arg_list.append(arg_tmp)
             dev_offset += dev_avg_c
             global_cmd_id += 1

@@ -148,7 +148,7 @@ class SDK(asyncio.Protocol):
                                                       msg[57:57 + data_length]).decode('utf-8'))
                 else:
                     data = json.loads(msg[57:57 + data_length].decode('utf-8'))
-                #self.LOG.info("recv msg: " + self.convert_to_dictstr(data))
+                # self.LOG.info("recv msg: " + self.convert_to_dictstr(data))
                 rsp_msg = self.dev_protocol_handler(data, ack)
                 if rsp_msg:
                     final_rsp_msg = self.msg_build(rsp_msg)
@@ -175,6 +175,7 @@ class SDK(asyncio.Protocol):
                 data_list, self.left_data = self.protocol_data_washer(ori_data)
                 if data_list:
                     for request_msg in data_list:
+                        # print(request_msg)
                         response_msg = self.protocol_handler(request_msg)
                         if response_msg == 'No_need_send':
                             pass

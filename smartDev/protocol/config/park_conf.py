@@ -1,33 +1,36 @@
 #!/usr/bin/env python
 # coding=UTF-8
 import datetime
-import random
 import re
 
 # 设备初始化参数
 Attribute_initialization = {
-    # "mac_list": ['20:05:88:80:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 4000)],
-    "mac_list": ['20:05:88:80:' + re.sub(r'(?P<xx>\d\d)', "\g<xx>:", "{:04d}".format(i)) for i in range(1, 1000)],
+    # 10012009201901241416
+    "mac_list": ['99:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 1160)],
     "DeviceFacturer": 1003,
     "DeviceType": 2005,
-    "subDeviceType": 3010,
+    "subDeviceType": 3024,
     "_type": 0,
-    "_name": 'cat door',
+    "_name": 'park',
     "_manufacturer": 'HDIOT',
     "_ip": "192.168.0.235",
     "_mask": '255.255.255.0',
-    "_version": '1.0.01',
+    "_version": 'HDXM-NST-v1.0.0',
     "_time": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode('utf-8'),
     "_appVersionInfo": 'appVersionInfo.8.8.8',
     "_fileServerUrl": 'http://192.168.10.1/noexist',
     "_ntpServer": '4.4.4.4',
+    "_openDuration": 10,
+    "_current_openDuration": 10,
+    "_alarmTimeout": 20,
     "_startTime": '1988-08-08',
     "_endTime": '2888-08-08',
     "_UserType": '',
     "_userID": '',
     "_CredenceType": 5,
-    "_credenceNo": '粤B88888',
+    "_credenceNo": '粤B66684',
     "_State": 0,
+    "changecreno":False,
 
     "SPECIAL_ITEM": {
         "_State": {
@@ -38,12 +41,12 @@ Attribute_initialization = {
     },
 
     "test_msgs": {
-        "interval": 10,
-        "round": 5,
+        "interval": 3000,
+        "round": 1,
         "msgs": {
             # "COM_UPLOAD_DEV_STATUS": 30,
-            # "COM_UPLOAD_RECORD.Data[0].RecordType.10002": 6,
-            # "COM_UPLOAD_EVENT.Data[0].EventType.30301": 1,
+            "COM_UPLOAD_RECORD.Data[0].RecordType.10002": 10,
+            # "COM_UPLOAD_EVENT.Data[0].EventType.30301": 100,
         }
     }
 }
@@ -75,7 +78,7 @@ Command_list = {
     "PAK_LOAD_LEFT_CAR_SEAT": {"msg": "下发剩余车位"},
     "PAK_LED_DISPLAY": {"msg": "下发LED显示"},
     "COM_PLAY_VOICE": {"msg": "下发语音播报"},
-    "COM_DOWNLOAD_BLACK_AND_WHITE_LIST": {"msg": "下发白名单列表"},
+    "COM_DOWNLOAD_BLACK_AND_WHITE_LIST": {"msg": "下发白名单列表"}
 }
 
 # 定制设备需要主动发的消息
@@ -110,9 +113,11 @@ COM_UPLOAD_RECORD = {
                 "deviceID": "##self._deviceID##",
                 "recordTime": "TIMENOW",
                 "RecordType": "will_be_replace",
-                "CredenceType": "##self._CredenceType##",
+                "CredenceType": 5,
+                "gateOpenMode": 2,
                 "credenceNo": "##self._credenceNo##",
-                "passType": 0,
+                "DeviceEntryType": 2,
+                "recogniseCaptureImage": ["group2/M00/0E/30/CmVG9Vx2cgqALvXcAAE4JK1D264788.jpg"]
             }
         ]
     }
@@ -337,7 +342,6 @@ COM_QUERY_DEV_STATUS = {
         ]
     }
 }
-
 u'''功能命令：下发欢迎信息'''
 PAK_LOAD_LED_INFO = {
     'set_item': {},

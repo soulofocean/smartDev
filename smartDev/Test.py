@@ -16,6 +16,10 @@ def f1(a,b="B",*,c):
     #print("args:",args)
     print("c:",c)
 if __name__ =='__main__':
+    for i in range(10):
+        if not i&0x1:
+            print("i:{}是偶数".format(i))
+    exit(666)
     f1("A",c="C")
     sourceStr = '<aab>abcdefg</aab>'
     # p = re.compile(r"(\w{2}(?=\w))")

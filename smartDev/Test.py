@@ -15,7 +15,26 @@ def f1(a,b="B",*,c):
     print("a:",a)
     #print("args:",args)
     print("c:",c)
+
+class A:
+    def __init__(self):
+        self.a = 223
+    def fun(self):
+        print("AAA")
+class B:
+    def __init__(self):
+        myA = A()
+        self.myAself = A()
+    # def fun(self):
+    #     print("BBB")
+    def fun2(self):
+        self.myAself.fun()
+
+
 if __name__ =='__main__':
+    bb = B()
+    bb.myAself.fun()
+    exit(666)
     for i in range(10):
         if not i&0x1:
             print("i:{}是偶数".format(i))

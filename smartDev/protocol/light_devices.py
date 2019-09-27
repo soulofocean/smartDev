@@ -168,6 +168,8 @@ class Door(BaseSim):
                 msg = self.get_upload_record(tmp_msg[-1])
             elif tmp_msg[0] == 'COM_UPLOAD_EVENT':
                 msg = self.get_upload_event(tmp_msg[-1])
+            elif tmp_msg[0] == 'ADS_UPLOAD_DEV_INFO':
+                msg = self.get_ads_upload_dev_info()
 
             for i in range(self.test_msgs["msgs"][msg_name]):
                 self.msgs.append(msg)
@@ -343,6 +345,9 @@ class Door(BaseSim):
     def get_upload_status(self):
         # self.LOG.info(common_APIs.chinese_show("设备状态上报"))
         return json.dumps(self.get_send_msg('COM_UPLOAD_DEV_STATUS'))
+
+    def get_ads_upload_dev_info(self):
+        return json.dumps(self.get_send_msg('ADS_UPLOAD_DEV_INFO'))
 
     def get_upload_record(self, record_type):
         # self.LOG.info(common_APIs.chinese_show("记录上传"))

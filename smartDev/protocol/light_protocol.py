@@ -175,7 +175,7 @@ class SDK(asyncio.Protocol):
                 data_list, self.left_data = self.protocol_data_washer(ori_data)
                 if data_list:
                     for request_msg in data_list:
-                        # print(request_msg)
+                        # print("rsv:{}".format(request_msg))
                         response_msg = self.protocol_handler(request_msg)
                         if response_msg == 'No_need_send':
                             pass
@@ -206,6 +206,7 @@ class SDK(asyncio.Protocol):
                 pass
             else:
                 data = await self.queue_out.get()
+                # print("send:{}".format(data))
                 self.transport.write(data)
                 self.LOG.debug(protocol_data_printB(data, title="client send data:"))
                 self.LOG.info(repr(data))

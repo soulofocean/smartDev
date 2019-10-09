@@ -8,7 +8,10 @@ import re
 Attribute_initialization = {
     #10012009201901241416
     # "mac_list": ['59:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(8000, 9000)],
-    "mac_list": ['82:FC:DB:DA:' + re.sub(r'(?P<xx>\d\d)', "\g<xx>:", "{:04d}".format(i)) for i in range(3000, 4000)],
+    # "mac_list": ['82:FC:DB:DA:' + re.sub(r'(?P<xx>\d\d)', "\g<xx>:", "{:04d}".format(i)) for i in range(3000, 4000)],
+    "mac_basic": '82:FC:DB:DA:30:00',
+    "mac_prefix_len": 8,
+    "mac_split_sign":":",
     "DeviceFacturer": 1015,
     "DeviceType": 2009,
     "subDeviceType": 3010,

@@ -6,7 +6,10 @@ import re
 # 设备初始化参数
 Attribute_initialization = {
     # 10012009201901241416
-    "mac_list": ['99:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 1160)],
+    # "mac_list": ['99:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 1160)],
+    "mac_basic": '99:FC:DB:DA:10:00',
+    "mac_prefix_len": 8,
+    "mac_split_sign":":",
     "DeviceFacturer": 1003,
     "DeviceType": 2005,
     "subDeviceType": 3024,

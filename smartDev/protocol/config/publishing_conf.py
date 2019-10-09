@@ -6,7 +6,10 @@ import re
 # 设备初始化参数
 Attribute_initialization = {
     # 10012009201901241416
-    "mac_list": ['32:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 2000)],
+    # "mac_list": ['32:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 2000)],
+    "mac_basic": '20:18:88:80:00:01',
+    "mac_prefix_len": 8,
+    "mac_split_sign":":",
     "DeviceFacturer": 1017,
     "DeviceType": 2018,
     "subDeviceType": 3018,
@@ -47,7 +50,7 @@ Attribute_initialization = {
         "interval": 1000,
         "round": 1,
         "msgs": {
-            "ADS_UPLOAD_DEV_INFO": 100
+            "ADS_UPLOAD_DEV_INFO": 10
             # "COM_UPLOAD_RECORD.Data[0].RecordType.30001": 180,
             # "COM_UPLOAD_EVENT.Data[0].EventType.30345": 1,
         }

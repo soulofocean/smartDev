@@ -20,7 +20,6 @@ from subprocess import *
 
 import crcmod.predefined
 
-
 '''
 def file_lock(open_file):
     return fcntl.flock(open_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -68,6 +67,7 @@ def register_caseid(casename):
 
         cls.__init__ = __init__
         return cls
+
     return cls_decorator
 
 
@@ -108,7 +108,8 @@ def dir_copy(source_dir, target_dir):
                 os.makedirs(target_dir)
 
             # 文件不存在，或者存在但是大小不同，覆盖
-            if not os.path.exists(targetF) or (os.path.exists(targetF) and (os.path.getsize(targetF) != os.path.getsize(sourceF))):
+            if not os.path.exists(targetF) or (
+                    os.path.exists(targetF) and (os.path.getsize(targetF) != os.path.getsize(sourceF))):
                 # 2进制文件
                 open(targetF, "wb").write(open(sourceF, "rb").read())
             else:
@@ -138,6 +139,7 @@ def need_add_lock(lock):
                 lock.release()
 
         return new_func
+
     return sync_with_lock
 
 
@@ -232,6 +234,13 @@ def bit_clear(byte, bit):
     temp = struct.unpack('B', byte)[0]
     temp = temp & ~(1 << bit)
     return struct.pack('B', temp)
+
+
+class msgs_info:
+    def __init__(self,name, msg, num):
+        self.name = name
+        self.msg = msg
+        self.num = num
 
 
 if __name__ == '__main__':

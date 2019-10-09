@@ -149,7 +149,7 @@ class Door(BaseSim):
             # 出入口车牌要同步递增
             creno = self.__getattribute__('_credenceNo')
             # print("creno_0:{}".format(creno))
-            creno = creno[:2] + str(int(creno[2:]) + N//2)
+            creno = creno[:2] + str(int(creno[2:]) + N // 2)
             # print("creno_1:{}".format(creno))
             self.__setattr__('_credenceNo', creno)
             # 出口上报要延迟半个周期
@@ -170,11 +170,16 @@ class Door(BaseSim):
                 msg = self.get_upload_event(tmp_msg[-1])
             elif tmp_msg[0] == 'ADS_UPLOAD_DEV_INFO':
                 msg = self.get_ads_upload_dev_info()
+            else:
+                raise NotImplementedError("Not found msg:{}".format(tmp_msg))
 
-            for i in range(self.test_msgs["msgs"][msg_name]):
-                self.msgs.append(msg)
-        self.msgs *= self.test_msgs["round"]
-        random.shuffle(self.msgs)
+            # for i in range(self.test_msgs["msgs"][msg_name]):
+            #     self.msgs.append(msg)
+            msgInfo = common_APIs.msgs_info(tmp_msg, msg, self.test_msgs["msgs"][msg_name])
+            msgInfo.num *= self.test_msgs["round"]
+            self.msgs.append(msgInfo)
+        # self.msgs *= self.test_msgs["round"]
+        # random.shuffle(self.msgs)
         self.LOG.info("device start!")
 
     def getSummaryDict(self):
@@ -280,7 +285,12 @@ class Door(BaseSim):
                 else:
                     if self.msgs:
                         # self.LOG.warn(str(len(self.msgs)))
-                        msg = self.msgs.pop()
+                        msg_index = random.randint(0, len(self.msgs) - 1)
+                        self.msgs[msg_index].num -= 1
+                        msg = self.msgs[msg_index].msg
+                        if self.msgs[msg_index].num == 0:
+                            self.msgs.pop(msg_index)
+                        # msg = self.msgs.pop()
                         # print("{}:{} disp".format(time.time(), self._deviceID))
                         # print("{}:{}".format(self._deviceID,msg))
                         self.to_to_send_msg(msg, ack=b'\x00')
@@ -437,7 +447,8 @@ class Door(BaseSim):
         for attribute_params, attribute_params_value in attribute_params_dict.items():
             self.add_item(attribute_params, attribute_params_value)
 
-        self._mac = self.mac_list[self.N]
+        # self._mac = self.mac_list[self.N]
+        self._mac = self.mac_increase()
         # "_deviceID": "1005200958FCDBDA5380",
         # "_subDeviceID": "301058FCDBDA53800001",
         self._deviceID = str(self.DeviceFacturer) + \
@@ -445,4 +456,38 @@ class Door(BaseSim):
         self._encrypt_key = self._deviceID[-16:].encode('utf-8')
         # self._decrypt_key = self._deviceID[-16:].encode('utf-8')
         self._subDeviceID = str(self.subDeviceType) + \
-                            self._mac.replace(":", '') + "%04d" % (self.N + 1)
+                            self._mac.replace(self.mac_split_sign, '') + "%04d" % (self.N + 1)
+
+    def mac_increase(self):
+        """将orgin_str前mac_split_sign保留，后续位加上N返回新的MAC地址字符串，保留为0时默认保留原长度减掉偏移长度的字符串"""
+        # 替换了分隔符后的MAC地址
+        mac_str = self.mac_basic.replace(self.mac_split_sign, "")
+        # 替换了分隔符后的MAC地址长度
+        str_len = len(mac_str)
+        # 偏移字符串的长度
+        int_len = len(str(self.N))
+        # 真实的偏移量部分的字符串长度
+        real_prefix_len = self.mac_prefix_len
+        if self.mac_prefix_len == 0:
+            # 保留原长度减掉偏移长度的字符串
+            real_prefix_len = str_len - int_len
+        if real_prefix_len <= 0:
+            raise NotImplementedError("Not support real_prefix_len({}) <= 0".format(real_prefix_len))
+        # 确定真实前缀后计算偏移字符串长度，保证拼接后MAC长度不变
+        int_len = str_len - real_prefix_len
+        if int_len <= 0:
+            raise NotImplementedError("Not support int_len({}) <= 0".format(int_len))
+        # 按照前缀长度获取前缀
+        prefix_str = mac_str[:real_prefix_len]
+        # 获取数字部分字符串
+        num_str = mac_str[real_prefix_len:]
+        # 计算偏移后的MAC字符串后半截
+        result_int = int(num_str) + int(self.N)
+        result_int_len = len(str(result_int))
+        # 如果后半截算出来长度比原偏移字符串长证明有进位，会覆盖前缀或者让MAC地址变长，此处暂不支持进位的处理
+        if result_int_len > int_len:
+            raise NotImplementedError("Not support result_int_len({}) > int_len({})".format(result_int_len, int_len))
+        # 获取新MAC拼接的字符串格式化字符
+        format_str = "{{}}{{:0{}d}}".format(int_len)
+        result_str = format_str.format(prefix_str, result_int)
+        return result_str

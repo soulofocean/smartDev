@@ -7,7 +7,10 @@ import re
 # 设备初始化参数
 Attribute_initialization = {
     # "mac_list": ['20:05:88:80:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 4000)],
-    "mac_list": ['20:05:88:80:' + re.sub(r'(?P<xx>\d\d)', "\g<xx>:", "{:04d}".format(i)) for i in range(1, 1000)],
+    # "mac_list": ['20:05:88:80:' + re.sub(r'(?P<xx>\d\d)', "\g<xx>:", "{:04d}".format(i)) for i in range(1, 1000)],
+    "mac_basic": '20:05:88:80:00:01',
+    "mac_prefix_len": 8,
+    "mac_split_sign":":",
     "DeviceFacturer": 1003,
     "DeviceType": 2005,
     "subDeviceType": 3010,

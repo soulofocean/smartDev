@@ -103,7 +103,10 @@ def str_increase(orgin_str: str, offset: int, prefix_len: int = 0, split_sign=":
     result_str = format_str.format(prefix_str, result_int)
     return result_str
 
-
+import json
 if __name__ == '__main__':
     start = now()
+    print(time.localtime(1570675769))
+    s1 = r"C:\Users\0816031X0\Desktop\temp\custom_infos.txt"
+    print(json.dumps(s1))
     print("Time span:{:.3f}".format(now() - start))

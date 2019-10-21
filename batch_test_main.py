@@ -8,6 +8,8 @@ import gevent
 from gevent import monkey
 import ConfigModule
 
+# import threading
+
 monkey.patch_all()
 # 每个进程启动时间间隔 单位秒
 process_start_delay = ConfigModule.process_start_delay
@@ -153,6 +155,7 @@ class MonitorType:
     def __init__(self, monitor_id):
         self.monitor_id = monitor_id
         self.totalRegisterOK = 0
+        self.onlineNum = 0
         self.totalSendCount = 0
         self.totalHBCount = 0
         self.totalRsv200okCount = 0
@@ -170,6 +173,13 @@ class MonitorType:
         self.totalSendQps = 0
         self.totalRcvQps = 0
         self.totalRealQps = 0
+
+        self.subTotalDelayS = 0
+        self.subTotalDelayPktNum = 0
+        self.totalDelayS = 0
+        self.totalDelayPktNum = 0
+        self.totalResetNum = 0
+        self.totalIgnoreNum = 0
 
     def __repr__(self):
         '''重载下默认的打印函数，打印更多东西，DEBUG用'''
@@ -223,9 +233,20 @@ class MonitorType:
             return 0
         return self.totalRsv200okCount / self.totalSendCount
 
+    def getSubAvgDelayMs(self):
+        if self.subTotalDelayPktNum == 0:
+            return 0
+        return int(round(self.subTotalDelayS / self.subTotalDelayPktNum, 3) * 1000)
+
+    def getAvgDelayMs(self):
+        if self.totalDelayPktNum == 0:
+            return 0
+        return int(round(self.totalDelayS / self.totalDelayPktNum, 3) * 1000)
+
     def resetNum(self):
         '''重置各项统计数据'''
         self.totalRegisterOK = 0
+        self.onlineNum = 0
         self.totalSendCount = 0
         self.totalHBCount = 0
         self.totalRsv200okCount = 0
@@ -244,6 +265,13 @@ class MonitorType:
         self.totalRcvQps = 0
         self.totalRealQps = 0
 
+        self.subTotalDelayS = 0
+        self.subTotalDelayPktNum = 0
+        self.totalDelayS = 0
+        self.totalDelayPktNum = 0
+        self.totalResetNum = 0
+        self.totalIgnoreNum = 0
+
 
 def ConvertStrToDict(lineStr: str, resutlDict: dict):
     '''将收到的字符串转换为字典或者打印出来'''
@@ -258,28 +286,41 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
                 logging.info(tmpDict)
                 index = tmpDict['cmd_index']
                 totalRegisterOK = tmpDict['reg_ok_num']
+                onlineNum = tmpDict['online_num']
                 # sendAliveNum = tmpDict['sendAliveNum']
                 sendTotalNum = tmpDict['total_req']
                 recv200OkNum = tmpDict['total_rsp'] - tmpDict['total_rsp_fail']
                 recvFailNum = tmpDict['total_rsp_fail']
                 totalConsumTime = tmpDict['time_spent']
+                totalDelayS = tmpDict['delay_s']
+                totalDelayPktNum = tmpDict['delay_pkt_num']
+                totalResetNum = tmpDict['send_reset_num']
+                totalIgnoreNum = tmpDict['recv_ignore_num']
                 if index in resutlDict:
-                    monitorInfo = resutlDict[index]
+                    monitorInfo: MonitorType = resutlDict[index]
                     # monitorInfo.subTotalHBCount = sendAliveNum - monitorInfo.totalHBCount
                     monitorInfo.subTotalSendCount = sendTotalNum - monitorInfo.totalSendCount
                     monitorInfo.subTotalRsv200okCount = recv200OkNum - monitorInfo.totalRsv200okCount
                     monitorInfo.subTotalRsvFailCount = recvFailNum - monitorInfo.totalRsvFailCount
                     monitorInfo.subTotalTimeSpent = totalConsumTime - monitorInfo.totalTimeSpent
                     monitorInfo.totalRegisterOK = totalRegisterOK
+                    monitorInfo.onlineNum = onlineNum
                     # monitorInfo.totalHBCount = sendAliveNum
                     monitorInfo.totalSendCount = sendTotalNum
                     monitorInfo.totalRsv200okCount = recv200OkNum
                     monitorInfo.totalRsvFailCount = recvFailNum
                     monitorInfo.totalTimeSpent = totalConsumTime
                     # logging.info("resutlDict[{}]={}".format(index,resutlDict[index]))
+                    monitorInfo.subTotalDelayS = totalDelayS - monitorInfo.totalDelayS
+                    monitorInfo.subTotalDelayPktNum = totalDelayPktNum - monitorInfo.totalDelayPktNum
+                    monitorInfo.totalDelayS = totalDelayS
+                    monitorInfo.totalDelayPktNum = totalDelayPktNum
+                    monitorInfo.totalResetNum = totalResetNum
+                    monitorInfo.totalIgnoreNum = totalIgnoreNum
                 else:
                     monitorInfo = MonitorType(index)
                     monitorInfo.totalRegisterOK = totalRegisterOK
+                    monitorInfo.onlineNum = onlineNum
                     # monitorInfo.totalHBCount = sendAliveNum
                     monitorInfo.totalSendCount = sendTotalNum
                     monitorInfo.totalRsv200okCount = recv200OkNum
@@ -290,6 +331,13 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
                     monitorInfo.subTotalRsv200okCount = recv200OkNum
                     monitorInfo.subTotalRsvFailCount = recvFailNum
                     monitorInfo.subTotalTimeSpent = totalConsumTime
+
+                    monitorInfo.subTotalDelayS = totalDelayS
+                    monitorInfo.subTotalDelayPktNum = totalDelayPktNum
+                    monitorInfo.totalDelayS = totalDelayS
+                    monitorInfo.totalDelayPktNum = totalDelayPktNum
+                    monitorInfo.totalResetNum = totalResetNum
+                    monitorInfo.totalIgnoreNum = totalIgnoreNum
                     resutlDict[index] = monitorInfo
             # 不是字典，直接打印
             else:
@@ -302,6 +350,7 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
 def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
     """打印出来报告 resultDict:报告数据来源 sleep_sec:生成报告间隔时间"""
     info = MonitorType(-1)
+    time.sleep(7)
     while 1:
         global monitor_run
         if (monitor_run == 0):
@@ -325,6 +374,13 @@ def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
                 # info.totalSendQps += v.getTotalSendQps()
                 # info.totalRcvQps += v.getTotalRsvQps()
                 # info.totalRealQps += v.getTotalRealQps()
+                info.subTotalDelayS += v.subTotalDelayS
+                info.subTotalDelayPktNum += v.subTotalDelayPktNum
+                info.totalDelayS += v.totalDelayS
+                info.totalDelayPktNum += v.totalDelayPktNum
+                info.totalResetNum += v.totalResetNum
+                info.totalIgnoreNum += v.totalIgnoreNum
+                info.onlineNum += v.onlineNum
             info.subTotalTimeSpent = info.totalTimeSpent - lastTime
             logging.info('=' * 60)
             logging.info("{}{}{}".format('-' * 23, 'Real Time Data', '-' * 23))
@@ -337,6 +393,8 @@ def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
             logging.info('{:30}:{:29.2f}'.format("PeriodRcvQps", info.subRcvQps))
             logging.info('{:30}:{:29.2f}'.format("PeriodRealQps", info.subRealQps))
             logging.info('{:30}:{:29.2f}'.format("PeriodTimeSpent", info.subTotalTimeSpent))
+            logging.info('{:30}:{:29}'.format("subAvgDelayMs", info.getSubAvgDelayMs()))
+            logging.info('{:30}:{:29}'.format("onlineNum", info.onlineNum))
             logging.info('-' * 60)
             logging.info("{}{}{}".format('-' * 25, 'Total Data', '-' * 25))
             # logging.info('-' * 60)
@@ -349,11 +407,15 @@ def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
             # logging.info('{:30}:{:29.2f}'.format("totalSendQps", info.totalSendQps))
             # logging.info('{:30}:{:29.2f}'.format("totalRcvQps", info.totalRcvQps))
             # logging.info('{:30}:{:29.2f}'.format("totalRealQps", info.totalRealQps))
+            logging.info('{:30}:{:29}'.format("totalAvgDelayMs", info.getAvgDelayMs()))
+            logging.info('{:30}:{:29}'.format("totalDelayPktNum", info.totalDelayPktNum))
+            logging.info('{:30}:{:29}'.format("totalResetNum", info.totalResetNum))
+            logging.info('{:30}:{:29}'.format("totalIgnoreNum", info.totalIgnoreNum))
             logging.info('-' * 60)
             logging.info('=' * 60)
         else:
             logging.info("Waiting for data...")
-            time.sleep(console_num * (1+process_start_delay))
+            time.sleep(console_num * (1 + process_start_delay))
             continue
         time.sleep(sleep_sec)
     logging.info('GenReport quit')
@@ -365,16 +427,19 @@ def ProcessConsoleMsg(clist, resultDict):
     while 1:
         needbreak = 1
         for i, c in enumerate(clist):
+            # print("i=",i)
+            time.sleep(1)
             line = c.stdout.readline()
+            # print(line)
             if line and len(line) > 0:
                 lineStr = line.decode('gbk').replace('\r', '').replace('\n', '')
                 ConvertStrToDict(lineStr, resultDict)
                 # logging.info("{}:{}".format(i,c.poll()))
             if c.poll() is None:
-                # 只要还有一个命令行没结束，此函数都不会推出
+                # 只要还有一个命令行没结束，此函数都不会退出
                 needbreak &= 0
         if needbreak == 1:
-            # 所有命令行结束，函数推出
+            # 所有命令行结束，函数退出
             break
     global monitor_run
     monitor_run = 0
@@ -390,11 +455,17 @@ if __name__ == "__main__":
     clist = []
     for i, arg in enumerate(arg_list):
         logging.info("[i={}] arg = {}".format(i, arg))
-        child = subprocess.Popen(arg, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        child = subprocess.Popen(arg, shell=True, stdout=subprocess.PIPE)
         clist.append(child)
         time.sleep(process_start_delay)
         logging.debug('=' * 60)
     monitor_run = 1
+    # t1 = threading.Thread(target=ProcessConsoleMsg,args=(clist, resultDict))
+    # t2 = threading.Thread(target=GenReport, args=(resultDict, monitor_inv_sec, len(arg_list)))
+    # t1.start()
+    # t2.start()
+    # t1.join()
+    # t2.join()
     g1 = gevent.spawn(ProcessConsoleMsg, clist, resultDict)
     g2 = gevent.spawn(GenReport, resultDict, monitor_inv_sec, len(arg_list))
     gevent.joinall([g1, g2])

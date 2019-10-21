@@ -313,7 +313,8 @@ def genReport(sims=[]):
                     #         real_ts = s.msgst[cmd]['spent']
                     #     continue
                     if cmd not in detailDict:
-                        detailDict[cmd] = {'req': 0, 'rsp': 0, 'rsp_fail': 0}
+                        detailDict[cmd] = {'req': 0, 'rsp': 0, 'rsp_fail': 0,
+                                           'time_info': common_APIs.msgst_time_info()}
                     if ("req" not in s.msgst[cmd]):
                         LOG.error(str(s.msgst[cmd]))
                     if ("req" in s.msgst[cmd]):
@@ -325,6 +326,9 @@ def genReport(sims=[]):
                     if ("rsp_fail" in s.msgst[cmd]):
                         detailDict[cmd]["rsp_fail"] += s.msgst[cmd]["rsp_fail"]
                         totalFail += s.msgst[cmd]["rsp_fail"]
+                    if ("time_info" in s.msgst[cmd]):
+                        detailDict[cmd]["time_info"] += s.msgst[cmd]["time_info"]
+                        # totalFail += s.msgst[cmd]["time_info"]
                 # strTmp += "{}\r\n".format(str(s.msgst))
         strTmp += "ConsumTime:{}s\r\n".format(ts)
         strTmp += "TotalSend:{}\t\tQPS:{}\r\n".format(totalSend, round(totalSend / ts, 3))
@@ -352,11 +356,14 @@ async def GenRealTimeReport(sims: list, sleep_s: float, cmd_index: int):
     start = time.time()
     while True:
         bye = False
-        result_dict = dict.fromkeys(["reg_ok_num", "total_req", "total_rsp", "total_rsp_fail", "time_spent"], 0)
+        result_dict = dict.fromkeys(
+            ["reg_ok_num", "total_req", "total_rsp", "total_rsp_fail", "time_spent", 'delay_s', 'delay_pkt_num',
+             'send_reset_num', 'recv_ignore_num','online_num'], 0)
         result_dict['cmd_index'] = cmd_index
         try:
             if sims:
                 result_dict["time_spent"] = time.time() - start
+                result_dict["online_num"] = 0
                 for s in sims:
                     # print(s.msgst.items())
                     if s.msgst:
@@ -371,22 +378,31 @@ async def GenRealTimeReport(sims: list, sleep_s: float, cmd_index: int):
                             result_dict["total_req"] += val['req']
                             result_dict["total_rsp"] += val['rsp']
                             result_dict["total_rsp_fail"] += val['rsp_fail']
-            print(json.dumps(result_dict))
+                            time_info:common_APIs.msgst_time_info = val['time_info']
+                            result_dict["delay_s"] += time_info.total_delay_s
+                            result_dict["delay_pkt_num"] += time_info.delay_pkt_count
+                            result_dict["send_reset_num"] += time_info.reset_count
+                            result_dict["recv_ignore_num"] += time_info.ignore_send_count
+                    if s.dev_register:
+                        result_dict["online_num"] += 1
+            print(json.dumps(result_dict),flush=True)
+            # sys.stdout.flush()
+            # LOG.debug(json.dumps(result_dict))
             # for i, t in enumerate(asyncio.Task.all_tasks()):
             #     print("【{}】TASK[{}]:{}".format(t.done(),i, t))
             done_c = 0
             for c in asyncio.Task.all_tasks():
                 # 计算当前处于done状态的协程数目
                 if c.done():
-                    done_c = done_c + 1
-            LOG.info("done/all:{}/{}".format(done_c, len(asyncio.Task.all_tasks())))
+                    done_c += 1
+            # LOG.debug("done/all:{}/{}".format(done_c, len(asyncio.Task.all_tasks())))
             # 当未处于done状态的协程数只剩下1个（就是这个统计协程本身）或者0个的时候就可以退出了
             # 打印的时候发现有时候这个统计协程本身就是done, 有时候又是runing，所以这里做了这个处理
             if (done_c >= len(asyncio.Task.all_tasks()) - 1):
+                LOG.info("byebye!")
                 # 停掉那个一直在跑的循环
                 lp = asyncio.get_event_loop()
                 lp.stop()
-                LOG.info("byebye!")
                 bye = True
             if bye:
                 # 跳出循环，自裁
@@ -407,7 +423,7 @@ if __name__ == '__main__':
     cmd_index = arg_handle.get_args('cmd_index')
 
     if arg_handle.get_args('device_count') > 1:
-        log_level = logging.ERROR
+        log_level = logging.INFO
         # enable_flog = False
 
     sims = []

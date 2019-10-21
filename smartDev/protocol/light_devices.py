@@ -51,15 +51,21 @@ class BaseSim(SDK):
 
     def update_msgst(self, command, direct):
         # time_val = time.time()
-        if command in self.msgst:
-            pass
-        else:
-            self.msgst[command] = {
-                'req': 0,
-                'rsp': 0,
-                'rsp_fail': 0,
-            }
+        self.init_msgst_dict(command)
+        # if command in self.msgst:
+        #     pass
+        # else:
+        #     self.msgst[command] = {
+        #         'req': 0,
+        #         'rsp': 0,
+        #         'rsp_fail': 0,
+        #         'time_info': common_APIs.msgst_time_info()
+        #     }
         self.msgst[command][direct] += 1
+        # if 'req' in direct:
+        #     self.msgst[command]['time_info'].send_update()
+        # else:
+        #     self.msgst[command]['time_info'].recv_update()
         # self.msgst['TIMES']['spent'] = time_val - self.msgst['TIMES']['reg']
 
     def set_item(self, item, value):
@@ -122,7 +128,7 @@ class Door(BaseSim):
         self.attribute_initialization()
 
         self.device_id = self._deviceID
-        self.msgst = defaultdict(lambda: {})
+        # self.msgst = defaultdict(lambda: {})
         if self_ip:
             self._ip = self_ip
         # 心跳间隔默认30秒
@@ -177,7 +183,9 @@ class Door(BaseSim):
             #     self.msgs.append(msg)
             msgInfo = common_APIs.msgs_info(tmp_msg, msg, self.test_msgs["msgs"][msg_name])
             msgInfo.num *= self.test_msgs["round"]
-            self.msgs.append(msgInfo)
+            # num<0 means run forever
+            if msgInfo.num != 0:
+                self.msgs.append(msgInfo)
         # self.msgs *= self.test_msgs["round"]
         # random.shuffle(self.msgs)
         self.LOG.info("device start!")
@@ -187,7 +195,9 @@ class Door(BaseSim):
         round = self.test_msgs["round"]
         for key in self.test_msgs["msgs"].keys():
             msgHead = key.split(".")[0]
-            tmpDict[msgHead] = self.test_msgs["msgs"][key] * round
+            num = self.test_msgs["msgs"][key] * round
+            if num != 0:
+                tmpDict[msgHead] = self.test_msgs["msgs"][key] * round
         return tmpDict
 
     def getStopConition(self):
@@ -199,7 +209,7 @@ class Door(BaseSim):
             self.LOG.warn("stop for time out, timespan is {:.2f}".format(time.time() - self.beginTime))
             # self.LOG.debug("2")
             return True
-        if (self.msgs):
+        if self.msgs:
             # self.LOG.debug("3")
             return False
         else:
@@ -214,6 +224,7 @@ class Door(BaseSim):
                 if ("COM_HEARTBEAT" in self.msgst):
                     if (self.msgst["COM_HEARTBEAT"]["req"] == self.msgst["COM_HEARTBEAT"]["rsp"]):
                         # self.LOG.debug("5")
+                        self.LOG.warn("STOP FOR COM_HEARTBEAT req==rsp")
                         return True
                     else:
                         # self.LOG.debug("6")
@@ -222,6 +233,7 @@ class Door(BaseSim):
                     # self.LOG.debug("7")
                     # if len(asyncio.Task.all_tasks())==2 :
                     #     self.lp.close()
+                    self.LOG.warn("STOP FOR COM_HEARTBEAT not in")
                     return True
             except ValueError as Argument:
                 self.LOG.error("getStopConition Error:{}".format(Argument))
@@ -266,15 +278,16 @@ class Door(BaseSim):
         # if len(asyncio.Task.all_tasks()) == 1:
         #     self.lp.stop()
 
-    def create_tasks(self):
-        self.task_obj.add_task(
-            'status maintain', self.status_maintain, 10000000, 100)
-
-        self.task_obj.add_task('monitor status report',
-                               self.status_report_monitor, 10000000, 1)
-
-        self.task_obj.add_task(
-            'heartbeat', self.to_send_heartbeat, 1000000, 1000)
+    # def create_tasks(self):
+    #     print("="*32)
+    #     self.task_obj.add_task(
+    #         'status maintain', self.status_maintain, 10000000, 100)
+    #
+    #     self.task_obj.add_task('monitor status report',
+    #                            self.status_report_monitor, 10000000, 1)
+    #
+    #     self.task_obj.add_task(
+    #         'heartbeat', self.to_send_heartbeat, 1000000, 1000)
 
     async def msg_dispatch(self):
         while self.getStopConition() == False:
@@ -285,15 +298,21 @@ class Door(BaseSim):
                 else:
                     if self.msgs:
                         # self.LOG.warn(str(len(self.msgs)))
-                        msg_index = random.randint(0, len(self.msgs) - 1)
-                        self.msgs[msg_index].num -= 1
-                        msg = self.msgs[msg_index].msg
-                        if self.msgs[msg_index].num == 0:
-                            self.msgs.pop(msg_index)
-                        # msg = self.msgs.pop()
-                        # print("{}:{} disp".format(time.time(), self._deviceID))
-                        # print("{}:{}".format(self._deviceID,msg))
-                        self.to_to_send_msg(msg, ack=b'\x00')
+                        msg_index = 0
+                        if len(self.msgs) > 1:
+                            msg_index = random.randint(0, len(self.msgs) - 1)
+                        # 正常情况下num也会不为0还被加入，round设置为0的时候已经做了判断不会被加入
+                        if self.msgs[msg_index].num != 0:
+                            msg = self.msgs[msg_index].msg
+                            # <0 means run forever
+                            if self.msgs[msg_index].num > 0:
+                                self.msgs[msg_index].num -= 1
+                            if self.msgs[msg_index].num == 0:
+                                self.msgs.pop(msg_index)
+                            # msg = self.msgs.pop()
+                            # print("{}:{} disp".format(time.time(), self._deviceID))
+                            # print("{}:{}".format(self._deviceID,msg))
+                            self.to_to_send_msg(msg, ack=b'\x00')
             except ValueError as Argument:
                 self.LOG.error("msg_dispatch Exception:{}".format(Argument))
             await asyncio.sleep(self.sleep_s)
@@ -490,4 +509,5 @@ class Door(BaseSim):
         # 获取新MAC拼接的字符串格式化字符
         format_str = "{{}}{{:0{}d}}".format(int_len)
         result_str = format_str.format(prefix_str, result_int)
+        # result_str = "32:FC:DB:DA:10:00"
         return result_str

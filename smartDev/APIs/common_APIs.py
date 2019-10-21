@@ -14,9 +14,9 @@ import re
 import socket
 import struct
 import sys
-import threading
 from binascii import unhexlify
 from subprocess import *
+import time
 
 import crcmod.predefined
 
@@ -237,12 +237,94 @@ def bit_clear(byte, bit):
 
 
 class msgs_info:
-    def __init__(self,name, msg, num):
+    def __init__(self, name, msg, num):
         self.name = name
         self.msg = msg
         self.num = num
 
 
+class msgst_time_info:
+    def __init__(self):
+        self.now = lambda: time.time()
+        # 当前发包时间
+        self.start: float = 0
+        # 总时延
+        self.total_delay_s = 0
+        # 计入平均时延的总包数
+        self.delay_pkt_count: int = 0
+        # 重置发包时间为0的次数
+        self.reset_count = 0
+        # 收包时候遇到发包时间为0的次数
+        self.ignore_send_count = 0
+        # 平均时延保留的小数位数
+        self.digit_num = 4
+
+    def send_update(self):
+        # 发送时间存在，意味着上个包还木有回包，重置发送时间后重置计数+1
+        if self.start != 0:
+            self.reset_count += 1
+        self.start = self.now()
+
+    def recv_update(self):
+        # 如果木有发送时间，意味着先收到此命令，模拟器只需要回复命令即可，不需要计算时延，忽略次数+1
+        if self.start == 0:
+            self.ignore_send_count += 1
+        else:
+            self.total_delay_s = self.total_delay_s + self.now() - self.start
+            self.start = 0
+            self.delay_pkt_count += 1
+
+    def get_avg_delay_s(self):
+        if self.delay_pkt_count == 0:
+            return 0
+        return round(self.total_delay_s / self.delay_pkt_count, self.digit_num)
+
+    def __add__(self, other):
+        if isinstance(other, msgst_time_info):
+            new_obj = msgst_time_info()
+            new_obj.delay_pkt_count = self.delay_pkt_count + other.delay_pkt_count
+            new_obj.total_delay_s = self.total_delay_s + other.total_delay_s
+            new_obj.reset_count = self.reset_count + other.reset_count
+            new_obj.ignore_send_count = self.ignore_send_count + other.ignore_send_count
+            return new_obj
+        else:
+            raise NotImplementedError("Not support type {}".format(type(other)))
+
+    def __str__(self):
+        tmp_str = "total_delay_s:{} avg_count:{} avg_delay_s:{}".format(self.total_delay_s, self.delay_pkt_count,
+                                                                        self.get_avg_delay_s())
+        if self.reset_count != 0:
+            tmp_str += " reset_count:{}".format(self.reset_count)
+        if self.ignore_send_count != 0:
+            tmp_str += " ignore_send_count:{}".format(self.ignore_send_count)
+        return tmp_str
+
+    def reset(self):
+        self.now = lambda: time.time()
+        # 当前发包时间
+        self.start: float = 0
+        # 总时延
+        self.total_delay_s = 0
+        # 计入平均时延的总包数
+        self.delay_pkt_count: int = 0
+        # 重置发包时间为0的次数
+        self.reset_count = 0
+        # 收包时候遇到发包时间为0的次数
+        self.ignore_send_count = 0
+        # 平均时延保留的小数位数
+        self.digit_num = 4
+
+
 if __name__ == '__main__':
+    t1 = msgst_time_info()
+    t1.delay_pkt_count = 3
+    t1.avg_delay_s = 2
+    print("t1=", t1)
+    t2 = msgst_time_info()
+    t2 += t1
+    print("t2=", t2)
+    t2 += t1
+    print("t2=", t2)
+    exit(666)
     print(crc16(b'12345678'))
     print(crc16(b'1234567890'))

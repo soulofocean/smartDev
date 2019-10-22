@@ -8,8 +8,6 @@ import gevent
 from gevent import monkey
 import ConfigModule
 
-# import threading
-
 monkey.patch_all()
 # 每个进程启动时间间隔 单位秒
 process_start_delay = ConfigModule.process_start_delay
@@ -18,49 +16,8 @@ monitor_inv_sec = ConfigModule.monitor_inv_sec
 my_dev_config = eval("ConfigModule.{}".format(ConfigModule.use_config))
 
 
-# dev_config = [
-#     {
-#         # 可执行程序所在文件夹
-#         "dev_folder": "smartDev",
-#         # 用来启动可执行程序的命令行，可能是python 可能是python3 也可能是 py -3和执行电脑的环境配置相关
-#         "cmd_arr": ("py", "-3"),
-#         # 要运行的可执行程序
-#         "dev_exe": "smart_dev.py",
-#         # 网关IP和端口，类型是一个元组
-#         "server_addr": ("10.134.195.20", 2001),
-#         # 启动的设备数目
-#         "dev_count": 1,
-#         # 指定模拟器的配置文件，需要和protocol下的config文件对应
-#         "config_file": "door_conf",
-#         # 注册等待时间,单位秒
-#         "send_pkt_delay": 30,
-#         # 发包超时时间：【0：发完包后收包==发包退出，-1：即使发完包也永远循环不退出，N：运行超过N秒后就退出】
-#         "send_pkt_timeout": 0,
-#         # 发包间隔 单位秒
-#         "pkt_period_s": 1,
-#         # 一个进程包含的协程数,由于用了Select，目前不能超过500
-#         "max_thread_count": 500,
-#         # 起始设备ID偏移量，默认为0
-#         "default_offset": 0,
-#     },
-#     # {
-#     #     "dev_type" : 2029,
-#     #     "dev_count" : 2,
-#     #     "dev_exe" : "sipClientPerf.exe",
-#     #     "dev_folder":"T2029",
-#     #     "pkt_num": 1,
-#     #     "pkt_period_s": 1,
-#     #     "max_thread_count": 300,
-#     #     "default_offset": 0,
-#     #     "send_pkt_delay": 20
-#     # }
-# ]
-
-
 def get_avg_list(orgin_num: int, max_num: int):
-    """线程负载均衡计算和分配
-    orgin_num:需要启动的总线程数
-    max_num:一个进程允许的最大线程数"""
+    """线程负载均衡计算和分配 @orgin_num 需要启动的总线程数 @max_num 一个进程允许的最大线程数"""
     # 返回的列表为做了负载均衡后的每个进程拥有的线程数
     avg_list = []
     if orgin_num == 0 or max_num == 0:
@@ -72,8 +29,8 @@ def get_avg_list(orgin_num: int, max_num: int):
         div_num = orgin_num // group_num
         mod_num = orgin_num % group_num
         logging.debug("{}={}*{}+{}".format(orgin_num, group_num, div_num, mod_num))
-        for i in range(group_num):
-            if i < mod_num:
+        for tmp_i in range(group_num):
+            if tmp_i < mod_num:
                 avg_list.append(div_num + 1)
             else:
                 avg_list.append(div_num)
@@ -86,8 +43,8 @@ def get_avg_list(orgin_num: int, max_num: int):
 #                            -to [发包超时:秒] -t [发包间隔:毫秒] -x [设备MAC偏移] -monitor_s [监控打印间隔:秒]
 #                            --index [命令窗口ID]
 def get_start_arg_list(dev_config):
-    '''获取subprocess运行的参数列表'''
-    arg_list = []
+    """获取subprocess运行的参数列表"""
+    my_arg_list = []
     # 为每个窗口分配的全局ID
     global_cmd_id = 0
     for dev_dict in dev_config:
@@ -111,7 +68,7 @@ def get_start_arg_list(dev_config):
             arg_tmp = list()
             arg_tmp.append("cd")
             arg_tmp.append("{}&&{}".format(dev_folder, cmd_arr[0]))
-            if (len(cmd_arr) > 1):
+            if len(cmd_arr) > 1:
                 arg_tmp.extend(cmd_arr[1:])
             arg_tmp.append(file_name)
             arg_tmp.extend(["-i", "{}".format(server_addr[0])])
@@ -126,31 +83,14 @@ def get_start_arg_list(dev_config):
             arg_tmp.extend(["--index", "{}".format(global_cmd_id)])
             # change_creno
             arg_tmp.extend(["-change_creno", "{}".format(change_creno)])
-            arg_list.append(arg_tmp)
+            my_arg_list.append(arg_tmp)
             dev_offset += dev_avg_c
             global_cmd_id += 1
-            # arg_list.append(["cd",
-            #                  "{}&&{}".format(dev_folder,cmd_arr),
-            #                  "-3",
-            #                  "{}".format(file_name),
-            #                  "-c",
-            #                  "{}".format(dev_avg_c),
-            #                  "-x",
-            #                  "{}".format(dev_offset)
-            #                  # "{}".format(dev_type),
-            #                  # "{}".format(dev_avg_c),
-            #                  # "{}".format(pkt_period_ms),
-            #                  # "{}".format(pkt_num),
-            #                  # "{}".format(default_offset + dev_offset),
-            #                  # "{}".format(send_pkt_delay),
-            #                  # "{}".format(monitor_inv_sec)
-            #                  ])
-            # dev_offset += dev_avg_c
-    return arg_list
+    return my_arg_list
 
 
 class MonitorType:
-    '''监控数据在此合并'''
+    """监控数据在此合并"""
 
     def __init__(self, monitor_id):
         self.monitor_id = monitor_id
@@ -182,54 +122,54 @@ class MonitorType:
         self.totalIgnoreNum = 0
 
     def __repr__(self):
-        '''重载下默认的打印函数，打印更多东西，DEBUG用'''
+        """重载下默认的打印函数，打印更多东西，DEBUG用"""
         return str(self.__dict__)
 
     def getSubSendQps(self):
         """计算一个统计周期内的发送QPS"""
-        if (self.subTotalTimeSpent == 0):
+        if self.subTotalTimeSpent == 0:
             return 0
         return self.subTotalSendCount / self.subTotalTimeSpent
 
     def getTotalSendQps(self):
-        '''计算运行开始至今的发送QPS'''
-        if (self.totalTimeSpent == 0):
+        """计算运行开始至今的发送QPS"""
+        if self.totalTimeSpent == 0:
             return 0
         return self.totalSendCount / self.totalTimeSpent
 
     def getSubRsvQps(self):
-        '''计算一个统计周期内的接收QPS'''
-        if (self.subTotalTimeSpent == 0):
+        """计算一个统计周期内的接收QPS"""
+        if self.subTotalTimeSpent == 0:
             return 0
         return (self.subTotalRsvFailCount + self.subTotalRsv200okCount) / self.subTotalTimeSpent
 
     def getTotalRsvQps(self):
-        '''计算运行至今的接收QPS'''
-        if (self.totalTimeSpent == 0):
+        """计算运行至今的接收QPS"""
+        if self.totalTimeSpent == 0:
             return 0
         return (self.totalRsvFailCount + self.totalRsv200okCount) / self.totalTimeSpent
 
     def getSubRealQps(self):
-        '''计算一个统计周期内的网关发送200的QPS'''
-        if (self.subTotalTimeSpent == 0):
+        """计算一个统计周期内的网关发送200的QPS"""
+        if self.subTotalTimeSpent == 0:
             return 0
         return self.subTotalRsv200okCount / self.subTotalTimeSpent
 
     def getTotalRealQps(self):
-        '''计算启动以来网关发送200的QPS'''
-        if (self.totalTimeSpent == 0):
+        """计算启动以来网关发送200的QPS"""
+        if self.totalTimeSpent == 0:
             return 0
         return self.totalRsv200okCount / self.totalTimeSpent
 
     def getSubSuccessRate(self):
-        '''计算一个周期内的报文成功率'''
-        if (self.subTotalSendCount == 0):
+        """计算一个周期内的报文成功率"""
+        if self.subTotalSendCount == 0:
             return 0
         return self.subTotalRsv200okCount / self.subTotalSendCount
 
     def getTotalSuccessRate(self):
-        '''计算启动以来的报文成功率'''
-        if (self.totalSendCount == 0):
+        """计算启动以来的报文成功率"""
+        if self.totalSendCount == 0:
             return 0
         return self.totalRsv200okCount / self.totalSendCount
 
@@ -244,7 +184,7 @@ class MonitorType:
         return int(round(self.totalDelayS / self.totalDelayPktNum, 3) * 1000)
 
     def resetNum(self):
-        '''重置各项统计数据'''
+        """重置各项统计数据"""
         self.totalRegisterOK = 0
         self.onlineNum = 0
         self.totalSendCount = 0
@@ -272,17 +212,53 @@ class MonitorType:
         self.totalResetNum = 0
         self.totalIgnoreNum = 0
 
+    def gen_report_str(self):
+        """生成要显示的报表"""
+        report_str = ""
+        report_str += '\n' + '=' * 60
+        report_str += "\n{}{}{}".format('-' * 23, 'Real Time Data', '-' * 23)
+        # report_str += '-' * 60)
+        report_str += '\n{:30}:{:29}'.format("PeriodSendCount", self.subTotalSendCount)
+        report_str += '\n{:30}:{:29}'.format("PeriodRsvSuccessCount", self.subTotalRsv200okCount)
+        report_str += '\n{:30}:{:29}'.format("PeriodRsvFailCount", self.subTotalRsvFailCount)
+        report_str += '\n{:30}:{:29.2%}'.format("PeriodSuccessRate", self.getSubSuccessRate())
+        report_str += '\n{:30}:{:29.2f}'.format("PeriodSendQps", self.subSendQps)
+        report_str += '\n{:30}:{:29.2f}'.format("PeriodRcvQps", self.subRcvQps)
+        report_str += '\n{:30}:{:29.2f}'.format("PeriodRealQps", self.subRealQps)
+        report_str += '\n{:30}:{:29.2f}'.format("PeriodTimeSpent", self.subTotalTimeSpent)
+        report_str += '\n{:30}:{:29}'.format("subAvgDelayMs", self.getSubAvgDelayMs())
+        report_str += '\n{:30}:{:29}'.format("onlineNum", self.onlineNum)
+        report_str += '\n' + '-' * 60
+        report_str += "\n{}{}{}".format('-' * 25, 'Total Data', '-' * 25)
+        # report_str += '\n-' * 60)
+        report_str += '\n{:30}:{:29}'.format("totalRegisterOK", self.totalRegisterOK)
+        report_str += '\n{:30}:{:29}'.format("totalSendCount", self.totalSendCount)
+        report_str += '\n{:30}:{:29}'.format("totalRsvSuccessCount", self.totalRsv200okCount)
+        report_str += '\n{:30}:{:29}'.format("totalRsvFailCount", self.totalRsvFailCount)
+        report_str += '\n{:30}:{:29.2%}'.format("totalSuccessRate", self.getTotalSuccessRate())
+        report_str += '\n{:30}:{:29.2f}'.format("totalTimeSpent", self.totalTimeSpent)
+        # report_str += '\n{:30}:{:29.2f}'.format("totalSendQps", self.totalSendQps))
+        # report_str += '\n{:30}:{:29.2f}'.format("totalRcvQps", self.totalRcvQps))
+        # report_str += '\n{:30}:{:29.2f}'.format("totalRealQps", self.totalRealQps))
+        report_str += '\n{:30}:{:29}'.format("totalAvgDelayMs", self.getAvgDelayMs())
+        report_str += '\n{:30}:{:29}'.format("totalDelayPktNum", self.totalDelayPktNum)
+        report_str += '\n{:30}:{:29}'.format("totalResetNum", self.totalResetNum)
+        report_str += '\n{:30}:{:29}'.format("totalIgnoreNum", self.totalIgnoreNum)
+        report_str += '\n' + '-' * 60
+        report_str += '\n' + '=' * 60
+        return report_str
+
 
 def ConvertStrToDict(lineStr: str, resutlDict: dict):
-    '''将收到的字符串转换为字典或者打印出来'''
+    """将收到的字符串转换为字典或者打印出来"""
     if lineStr and len(lineStr) > 0:
         # print(lineStr)
-        tmpDict = dict()
+        # tmpDict = dict()
         try:
             # 疑似字典，尝试转换
             if "{" in lineStr:
                 tmpDict = json.loads(lineStr)
-                # 转换成功，进行数据获取
+                # region 转换成功，进行数据获取
                 logging.info(tmpDict)
                 index = tmpDict['cmd_index']
                 totalRegisterOK = tmpDict['reg_ok_num']
@@ -339,6 +315,7 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
                     monitorInfo.totalResetNum = totalResetNum
                     monitorInfo.totalIgnoreNum = totalIgnoreNum
                     resutlDict[index] = monitorInfo
+                # endregion
             # 不是字典，直接打印
             else:
                 logging.info(lineStr)
@@ -347,18 +324,19 @@ def ConvertStrToDict(lineStr: str, resutlDict: dict):
             logging.error("ProcessLineStr Exception:{}".format(ex1.__repr__()))
 
 
-def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
+def GenReport(result_dict: dict, sleep_sec: float, console_num: int):
     """打印出来报告 resultDict:报告数据来源 sleep_sec:生成报告间隔时间"""
     info = MonitorType(-1)
     time.sleep(7)
     while 1:
         global monitor_run
-        if (monitor_run == 0):
+        if monitor_run == 0:
             break
-        if resultDict:
+        if result_dict:
             lastTime = info.totalTimeSpent
             info.resetNum()
-            for k, v in resultDict.items():
+            # region 数据合并操作
+            for k, v in result_dict.items():
                 info.subTotalSendCount += v.subTotalSendCount
                 info.subTotalRsv200okCount += v.subTotalRsv200okCount
                 info.subTotalRsvFailCount += v.subTotalRsvFailCount
@@ -382,37 +360,8 @@ def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
                 info.totalIgnoreNum += v.totalIgnoreNum
                 info.onlineNum += v.onlineNum
             info.subTotalTimeSpent = info.totalTimeSpent - lastTime
-            logging.info('=' * 60)
-            logging.info("{}{}{}".format('-' * 23, 'Real Time Data', '-' * 23))
-            # logging.info('-' * 60)
-            logging.info('{:30}:{:29}'.format("PeriodSendCount", info.subTotalSendCount))
-            logging.info('{:30}:{:29}'.format("PeriodRsvSuccessCount", info.subTotalRsv200okCount))
-            logging.info('{:30}:{:29}'.format("PeriodRsvFailCount", info.subTotalRsvFailCount))
-            logging.info('{:30}:{:29.2%}'.format("PeriodSuccessRate", info.getSubSuccessRate()))
-            logging.info('{:30}:{:29.2f}'.format("PeriodSendQps", info.subSendQps))
-            logging.info('{:30}:{:29.2f}'.format("PeriodRcvQps", info.subRcvQps))
-            logging.info('{:30}:{:29.2f}'.format("PeriodRealQps", info.subRealQps))
-            logging.info('{:30}:{:29.2f}'.format("PeriodTimeSpent", info.subTotalTimeSpent))
-            logging.info('{:30}:{:29}'.format("subAvgDelayMs", info.getSubAvgDelayMs()))
-            logging.info('{:30}:{:29}'.format("onlineNum", info.onlineNum))
-            logging.info('-' * 60)
-            logging.info("{}{}{}".format('-' * 25, 'Total Data', '-' * 25))
-            # logging.info('-' * 60)
-            logging.info('{:30}:{:29}'.format("totalRegisterOK", info.totalRegisterOK))
-            logging.info('{:30}:{:29}'.format("totalSendCount", info.totalSendCount))
-            logging.info('{:30}:{:29}'.format("totalRsvSuccessCount", info.totalRsv200okCount))
-            logging.info('{:30}:{:29}'.format("totalRsvFailCount", info.totalRsvFailCount))
-            logging.info('{:30}:{:29.2%}'.format("totalSuccessRate", info.getTotalSuccessRate()))
-            logging.info('{:30}:{:29.2f}'.format("totalTimeSpent", info.totalTimeSpent))
-            # logging.info('{:30}:{:29.2f}'.format("totalSendQps", info.totalSendQps))
-            # logging.info('{:30}:{:29.2f}'.format("totalRcvQps", info.totalRcvQps))
-            # logging.info('{:30}:{:29.2f}'.format("totalRealQps", info.totalRealQps))
-            logging.info('{:30}:{:29}'.format("totalAvgDelayMs", info.getAvgDelayMs()))
-            logging.info('{:30}:{:29}'.format("totalDelayPktNum", info.totalDelayPktNum))
-            logging.info('{:30}:{:29}'.format("totalResetNum", info.totalResetNum))
-            logging.info('{:30}:{:29}'.format("totalIgnoreNum", info.totalIgnoreNum))
-            logging.info('-' * 60)
-            logging.info('=' * 60)
+            # endregion
+            logging.info(info.gen_report_str())
         else:
             logging.info("Waiting for data...")
             time.sleep(console_num * (1 + process_start_delay))
@@ -421,19 +370,19 @@ def GenReport(resultDict: dict, sleep_sec: float, console_num: int):
     logging.info('GenReport quit')
 
 
-def ProcessConsoleMsg(clist, resultDict):
+def ProcessConsoleMsg(client_list, result_dict):
     """将各个控制台中的标准输出流汇总到resultDict中 clist:控制台对象列表 resultDict:存放结果数据的字典"""
-    needbreak = 0
+    # needbreak = 0
     while 1:
         needbreak = 1
-        for i, c in enumerate(clist):
+        for index, c in enumerate(client_list):
             # print("i=",i)
             time.sleep(1)
             line = c.stdout.readline()
             # print(line)
             if line and len(line) > 0:
                 lineStr = line.decode('gbk').replace('\r', '').replace('\n', '')
-                ConvertStrToDict(lineStr, resultDict)
+                ConvertStrToDict(lineStr, result_dict)
                 # logging.info("{}:{}".format(i,c.poll()))
             if c.poll() is None:
                 # 只要还有一个命令行没结束，此函数都不会退出
@@ -449,7 +398,8 @@ if __name__ == "__main__":
     # 用来打印报告的字典
     resultDict = dict()
     logging.basicConfig(level=logging.DEBUG,
-                        format='[%(asctime)10s.%(msecs)03d][%(filename)s line:%(lineno)03d][%(levelname)-5s]%(message)s',
+                        format='[%(asctime)10s.%(msecs)03d][%(filename)s'
+                               ' line:%(lineno)03d][%(levelname)-5s]%(message)s',
                         datefmt='%F %T')
     arg_list = get_start_arg_list(my_dev_config)
     clist = []
@@ -460,12 +410,6 @@ if __name__ == "__main__":
         time.sleep(process_start_delay)
         logging.debug('=' * 60)
     monitor_run = 1
-    # t1 = threading.Thread(target=ProcessConsoleMsg,args=(clist, resultDict))
-    # t2 = threading.Thread(target=GenReport, args=(resultDict, monitor_inv_sec, len(arg_list)))
-    # t1.start()
-    # t2.start()
-    # t1.join()
-    # t2.join()
     g1 = gevent.spawn(ProcessConsoleMsg, clist, resultDict)
     g2 = gevent.spawn(GenReport, resultDict, monitor_inv_sec, len(arg_list))
     gevent.joinall([g1, g2])

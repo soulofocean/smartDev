@@ -2,7 +2,7 @@
 # 每个进程启动时间间隔 单位秒
 process_start_delay = 0.1
 # 监控打印间隔，时间秒
-monitor_inv_sec = 60
+monitor_inv_sec = 300
 use_config = 'dev_config3'
 dev_config = [
     {
@@ -102,7 +102,7 @@ dev_config4 = [
         # 指定模拟器的配置文件，需要和protocol下的config文件对应
         "config_file": "publishing_conf",
         # 注册等待时间,单位秒
-        "send_pkt_delay": 5,
+        "send_pkt_delay": 60,
         # 发包超时时间：【0：发完包后收包==发包退出，-1：即使发完包也永远循环不退出，N：运行超过N秒后就退出】
         "send_pkt_timeout": 0,
         # 发包间隔 单位秒

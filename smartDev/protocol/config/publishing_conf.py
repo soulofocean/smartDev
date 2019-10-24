@@ -9,7 +9,7 @@ Attribute_initialization = {
     # "mac_list": ['32:FC:DB:DA:' + re.sub(r'^(?P<xx>\d\d)', "\g<xx>:", str(i)) for i in range(1000, 2000)],
     "mac_basic": '32:FC:DB:DA:20:00',
     "mac_prefix_len": 8,
-    "mac_split_sign":":",
+    "mac_split_sign": ":",
     "DeviceFacturer": 1017,
     "DeviceType": 2018,
     "subDeviceType": 3018,
@@ -162,19 +162,19 @@ ADS_UPLOAD_DEV_INFO = {
 u'''功能命令：设备注册'''
 COM_DEV_REGISTER = {
     "send_msg": {
-"Command": "COM_DEV_REGISTER",
-"Data": [
-    {
-        "Type": "##self._type##",
-        "deviceID": "##self._deviceID##",
-        "manufacturer": "##self._manufacturer##",
-        "ip": "##self._ip##",
-        "mac": "##self._mac##",
-        "mask": "##self._mask##",
-        "version": "##self._version##",
+        "Command": "COM_DEV_REGISTER",
+        "Data": [
+            {
+                "Type": "##self._type##",
+                "deviceID": "##self._deviceID##",
+                "manufacturer": "##self._manufacturer##",
+                "ip": "##self._ip##",
+                "mac": "##self._mac##",
+                "mask": "##self._mask##",
+                "version": "##self._version##",
+            }
+        ]
     }
-]
-}
 }
 
 # 定制设备需要应答的消息
@@ -182,59 +182,59 @@ u'''功能命令：设备目录查询'''
 COM_QUERY_DIR = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_QUERY_DIR",
-"Result": 0,
-"Data": [
-    {
-        "deviceID": "##self._deviceID##",
-        "name": "##self._name##",
-        "manufacturer": "##self._manufacturer##",
-        "version": "##self._version##",
-        "subDeviceType": "##self.subDeviceType##"
+        "Command": "COM_QUERY_DIR",
+        "Result": 0,
+        "Data": [
+            {
+                "deviceID": "##self._deviceID##",
+                "name": "##self._name##",
+                "manufacturer": "##self._manufacturer##",
+                "version": "##self._version##",
+                "subDeviceType": "##self.subDeviceType##"
+            }
+        ]
     }
-]
-}
 }
 
 u'''功能命令：恢复出厂设置'''
 COM_DEV_RESET = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_DEV_RESET",
-"Result": 0,
-}
+        "Command": "COM_DEV_RESET",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：读取时间'''
 COM_READ_TIME = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_READ_TIME",
-"Result": 0,
-"Data": [
-    {
-        "time": "##self._time##"
+        "Command": "COM_READ_TIME",
+        "Result": 0,
+        "Data": [
+            {
+                "time": "##self._time##"
+            }
+        ]
     }
-]
-}
 }
 
 u'''功能命令：设置时间'''
 COM_SET_TIME = {
     'set_item': {'_time': 'Data.time'},
     "rsp_msg": {
-"Command": "COM_SET_TIME",
-"Result": 0,
-}
+        "Command": "COM_SET_TIME",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：立即校时'''
 COM_CORRECTION = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_CORRECTION",
-"Result": 0,
-}
+        "Command": "COM_CORRECTION",
+        "Result": 0,
+    }
 
 }
 
@@ -242,14 +242,14 @@ u'''功能命令：读取系统版本信息'''
 COM_READ_SYSTEM_VERSION = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_READ_SYSTEM_VERSION",
-"Result": 0,
-"Data": [
-    {
-        "appVersionInfo": "##self._appVersionInfo##"
+        "Command": "COM_READ_SYSTEM_VERSION",
+        "Result": 0,
+        "Data": [
+            {
+                "appVersionInfo": "##self._appVersionInfo##"
+            }
+        ]
     }
-]
-}
 
 }
 
@@ -257,14 +257,14 @@ u'''功能命令：通知设备升级'''
 COM_NOTIFY_UPDATE = {
     'set_item': {'_version': 'Data.newVersion'},
     "rsp_msg": {
-"Command": "COM_NOTIFY_UPDATE",
-"Result": 0,
-"Data": [
-    {
-        "appVersionInfo": "##self._appVersionInfo##"
+        "Command": "COM_NOTIFY_UPDATE",
+        "Result": 0,
+        "Data": [
+            {
+                "appVersionInfo": "##self._appVersionInfo##"
+            }
+        ]
     }
-]
-}
 
 }
 
@@ -272,98 +272,98 @@ u'''功能命令：读取参数'''
 COM_READ_PARAMETER = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_READ_PARAMETER",
-"Result": 0,
-"Data": [
-    {
-        "deviceID": "##self._deviceID##",
-        "fileServerUrl": "##self._fileServerUrl##",
-        "ntpServer": "##self._ntpServer##",
-        "openDuration": "##self._openDuration##",
-        "alarmTimeout": "##self._alarmTimeout##",
+        "Command": "COM_READ_PARAMETER",
+        "Result": 0,
+        "Data": [
+            {
+                "deviceID": "##self._deviceID##",
+                "fileServerUrl": "##self._fileServerUrl##",
+                "ntpServer": "##self._ntpServer##",
+                "openDuration": "##self._openDuration##",
+                "alarmTimeout": "##self._alarmTimeout##",
+            }
+        ]
     }
-]
-}
 
 }
 
 u'''功能命令：设置参数'''
 COM_SETTING_PARAMETERS = {
     "set_item": {"_fileServerUrl": "Data.fileServerUrl", "_ntpServer": "Data.ntpServer",
-"_alarmTimeout": "Data.alarmTimeout", "_openDuration": "Data.openDuration"},
-"rsp_msg": {
-"Command": "COM_SETTING_PARAMETERS",
-"Result": 0,
-}
+                 "_alarmTimeout": "Data.alarmTimeout", "_openDuration": "Data.openDuration"},
+    "rsp_msg": {
+        "Command": "COM_SETTING_PARAMETERS",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：下发固定凭证信息'''
 COM_LOAD_CERTIFICATE = {
     "set_item": {"_startTime": "Data.startTime", "_endTime": "Data.endTime", "_subDeviceID": "Data.subDeviceID",
-"_UserType": "Data.UserType", "_CredenceType": "Data.CredenceType",
-"_credenceNo": "Data.credenceNo", },
-"rsp_msg": {
-"Command": "COM_LOAD_CERTIFICATE",
-"Result": 0,
-}
+                 "_UserType": "Data.UserType", "_CredenceType": "Data.CredenceType",
+                 "_credenceNo": "Data.credenceNo", },
+    "rsp_msg": {
+        "Command": "COM_LOAD_CERTIFICATE",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：读取固定凭证信息'''
 COM_READ_CERTIFICATE = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_READ_CERTIFICATE",
-"Result": 0,
-"Data": [
-    {
-        "startTime": "##self._startTime##",
-        "endTime": "##self._endTime##",
-        "CredenceType": "##self._CredenceType##",
-        "credenceNo": "##self._credenceNo##",
+        "Command": "COM_READ_CERTIFICATE",
+        "Result": 0,
+        "Data": [
+            {
+                "startTime": "##self._startTime##",
+                "endTime": "##self._endTime##",
+                "CredenceType": "##self._CredenceType##",
+                "credenceNo": "##self._credenceNo##",
+            }
+        ]
     }
-]
-}
 }
 
 u'''功能命令：删除固定凭证信息'''
 COM_DELETE_CERTIFICATE = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_DELETE_CERTIFICATE",
-"Result": 0,
-}
+        "Command": "COM_DELETE_CERTIFICATE",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：批量下发固定凭证信息'''
 COM_LOAD_CERTIFICATE_IN_BATCH = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_LOAD_CERTIFICATE_IN_BATCH",
-"Result": 0,
-}
+        "Command": "COM_LOAD_CERTIFICATE_IN_BATCH",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：开关闸（门）'''
 COM_GATE_CONTROL = {
     "set_item": {"_State": "Data.operateType", "_userID": "Data.userID", "_userType": "Data.userType"},
     "rsp_msg": {
-"Command": "COM_GATE_CONTROL",
-"Result": 0,
-}
+        "Command": "COM_GATE_CONTROL",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：设备状态查询'''
 COM_QUERY_DEV_STATUS = {
     'set_item': {},
     "rsp_msg": {
-"Command": "COM_QUERY_DEV_STATUS",
-"Result": 0,
-"Data": [
-    {
-        "State": "##self._State##",
+        "Command": "COM_QUERY_DEV_STATUS",
+        "Result": 0,
+        "Data": [
+            {
+                "State": "##self._State##",
+            }
+        ]
     }
-]
-}
 }
 # 信息发布屏
 
@@ -371,67 +371,67 @@ u'''功能命令：新增节目'''
 ADS_ADD_PROGRAM = {
     'set_item': {'_id': 'Data.0.id'},
     "rsp_msg": {
-"Command": "ADS_ADD_PROGRAM",
-"Result": 0,
-"Data": [
-    {
-        "id": "##self._id##",
+        "Command": "ADS_ADD_PROGRAM",
+        "Result": 0,
+        "Data": [
+            {
+                "id": "##self._id##",
+            }
+        ]
     }
-]
-}
 }
 
 u'''功能命令：删除节目'''
 ADS_DELETE_PROGRAM = {
     'set_item': {},
     "rsp_msg": {
-"Command": "ADS_DELETE_PROGRAM",
-"Result": 0,
-}
+        "Command": "ADS_DELETE_PROGRAM",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：新增日程'''
 ADS_ADD_SCHEDULE = {
     'set_item': {'_id_ADD_SCHEDULE': 'Data.0.id'},
     "rsp_msg": {
-"Command": "ADS_ADD_SCHEDULE",
-"Result": 0,
-"Data": [
-    {
-        "id": "##self._id_ADD_SCHEDULE##",
+        "Command": "ADS_ADD_SCHEDULE",
+        "Result": 0,
+        "Data": [
+            {
+                "id": "##self._id_ADD_SCHEDULE##",
+            }
+        ]
     }
-]
-}
 }
 
 u'''功能命令：删除日程'''
 ADS_DELETE_SCHEDULE = {
     'set_item': {'_id_DELETE_SCHEDULE': 'Data.0.idList.0.id'},
     "rsp_msg": {
-"Command": "ADS_DELETE_SCHEDULE",
-"Result": 0,
-}
+        "Command": "ADS_DELETE_SCHEDULE",
+        "Result": 0,
+    }
 }
 
 u'''功能命令：传输素材'''
 ADS_TRANS_MATERIAL = {
     'set_item': {},
     "rsp_msg": {
-"Command": "ADS_TRANS_MATERIAL",
-"Result": 0
-}
+        "Command": "ADS_TRANS_MATERIAL",
+        "Result": 0
+    }
 }
 # ADS_PUBLISH_SCHEDULE
 u'''功能命令：发布日程'''
 ADS_PUBLISH_SCHEDULE = {
     'set_item': {'_id_ADS_PUBLISH_SCHEDULE': 'Data.0.id'},
     "rsp_msg": {
-"Command": "ADS_ADD_SCHEDULE",
-"Result": 0,
-"Data": [
-    {
-        "id": "##self._id_ADS_PUBLISH_SCHEDULE##",
+        "Command": "ADS_ADD_SCHEDULE",
+        "Result": 0,
+        "Data": [
+            {
+                "id": "##self._id_ADS_PUBLISH_SCHEDULE##",
+            }
+        ]
     }
-]
-}
 }
